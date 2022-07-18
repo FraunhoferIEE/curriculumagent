@@ -18,7 +18,7 @@ Installing the package should already give you all needed requirements.
 Usage/Documentation
 -------------------
 
-Please take a look at our [sphinx documentation](#) on how to use the package.
+Please take a look at our [sphinx documentation](curriculumagent.readthedocs.io) on how to use the package.
 
 We also provide several jupyter notebooks in `./jupyter_notebooks` to get you started quickly.
 
