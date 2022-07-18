@@ -1,0 +1,12 @@
+{
+    "initializer":{"_type":"choice","_value":["O", "RN","RU","Z"]},
+    "learning_rate":{"_type": "loguniform", "_value": [1e-6, 1e-1]},
+    "activation": {"_type":"choice","_value":["relu", "leaky_relu","elu"]},
+    "layer1": {"_type":"uniform","_value":[50,1500]},
+    "layer2": {"_type":"uniform","_value":[0,1500]},
+    "layer3": {"_type":"uniform","_value":[0,1500]},
+    "layer4": {"_type":"uniform","_value":[0,1500]},
+    "dropout1": {"_type":"uniform","_value":[0,0.5]},
+    "dropout2": {"_type":"uniform","_value":[0,0.5]},
+    "batchsize": {"_type":"choice","_value":[128, 256,384,512,768,1024]}
+}

@@ -1,0 +1,36 @@
+[build-system]
+requires = [
+    "setuptools >= 42",  # At least v42 of setuptools required!
+    "versioningit" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CurriculumAgent"
+dynamic = ["version"]
+authors = [
+    { name = "Malte Lehna", email = "malte.lehna@iee.fraunhofer.de" },
+]
+description = "CurriculumAgent is a Reinforcement Learning Agent designed to learn from and act within the Grid2Op Environments."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+
+]
+[tool.setuptools]
+py-modules = ['curriculumagent']
+
+[project.urls]
+"Homepage" = "https://github.com/FraunhoferIEE/CurriculumAgent"
+"Bug Tracker" = "https://github.com/FraunhoferIEE/CurriculumAgent/issues"
+
+[tool.versioningit.vcs]
+# The method key:
+method = "git"  # <- The method name
+
+# Parameters to pass to the method:
+match = ["v*"]
+default-tag = "0.1.0"
