@@ -22,8 +22,7 @@ Please take a look at our [sphinx documentation](#) on how to use the package.
 
 We also provide several jupyter notebooks in `./jupyter_notebooks` to get you started quickly.
 
-In addition, a the Agent will be added to the [L2RPN Baselines](https://github.
-com/rte-france/l2rpn-baselines/tree/master/l2rpn_baselines) in the next few weeks. 
+In addition, a the Agent will be added to the [L2RPN Baselines](https://github.com/rte-france/l2rpn-baselines/tree/master/l2rpn_baselines) in the next few weeks. 
 
 License
 -------
