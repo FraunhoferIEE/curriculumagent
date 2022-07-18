@@ -4,21 +4,28 @@ CurriculumAgent
 CurriculumAgent is a Reinforcement Learning Agent designed to learn from and act within the  
 [Grid2Op Environments](https://grid2op.readthedocs.io/en/latest/). Originated from the [NeurIPS 2020 Competition 
 Agent by binbinchen](https://github.com/AsprinChina/L2RPN_NIPS_2020_a_PPO_Solution), this package contains a cleanup 
-and improved version of the agent. 
+and improved version of the agent. Next to the general code cleanup, the package is updated for the newer Grid2Op 
+version and future research results are planed to be published for this package. 
 
-In addition, current research results will be published for this package. 
+[![CI](https://github.com/FraunhoferIEE/CurriculumAgent/actions/workflows/main.yml/badge.svg)](https://github.com/FraunhoferIEE/CurriculumAgent/actions/workflows/main.yml)
+[![Documentation Status](https://readthedocs.org/projects/curriculumagent/badge/?version=latest)](https://curriculumagent.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/CurriculumAgent.svg)](https://badge.fury.io/py/CurriculumAgent)
+
 
 Setup
 -----
 
-All requirements are listed in `requirements.txt`.
+All requirements are listed in `requirements.txt`. Installing the package should already give you all needed 
+requirements. Furthermore, the package can also be installed via
+```{python}
+pip install CurriculumAgent
+```
 
-Installing the package should already give you all needed requirements.
 
 Usage/Documentation
 -------------------
 
-Please take a look at our [sphinx documentation](curriculumagent.readthedocs.io) on how to use the package.
+Please take a look at our [sphinx documentation](https://curriculumagent.readthedocs.io/en/latest/) on how to use the package.
 
 We also provide several jupyter notebooks in `./jupyter_notebooks` to get you started quickly.
 

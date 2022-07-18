@@ -1,4 +1,4 @@
-name: Publishing after Tag Crreation
+name: Publishing after Tag Creation
 
 on:
   push:
