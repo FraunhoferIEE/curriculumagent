@@ -6,5 +6,3 @@ pytest
 pytest-benchmark
 pylint
 versioningit
-sphinx-autodoc-typehints
-sphinx_rtd_theme
