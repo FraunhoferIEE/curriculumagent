@@ -34,7 +34,6 @@ tests:
   stage: Test
   script:
     - pip install -r requirements.txt
-    - pip install -e .
     - pip install pytest-cov pytest-benchmark
     - pytest --cov-report html:cov_html --cov=curriculumagent tests/
   dependencies: [ ]
