@@ -18,3 +18,5 @@ grpcio==1.43
 jupyter
 l2rpn_baselines
 sklearn
+sphinx-autodoc-typehints
+sphinx_rtd_theme
