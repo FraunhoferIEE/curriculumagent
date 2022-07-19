@@ -119,7 +119,7 @@ class TestTutorGeneral:
 
         assert len(tutor.actions) == 20
 
-    def test_act_with_id_tutor(self, test_env, test_action_paths):
+    def test_act_with_id_tutor_tripple(self, test_env, test_action_paths):
         """
         Testing the act function of the tutor
         """

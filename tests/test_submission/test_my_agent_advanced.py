@@ -20,7 +20,7 @@ class TestAdvancedAgent():
         """
         _, act_path = test_paths_env
         env = test_env
-        old_m, new_m = test_submission_models
+        old_m, _ = test_submission_models
         agent = MyAgent(env.action_space, model_path=old_m,
                         this_directory_path=act_path,
                         action_space_path=None,
@@ -40,7 +40,7 @@ class TestAdvancedAgent():
                     act_path.parent / "submission" / "action_sets" / "actionspace_nminus1.npy"]
 
         env = test_env
-        old_m, new_m = test_submission_models
+        _, new_m = test_submission_models
         agent = MyAgent(env.action_space,
                         model_path=new_m,
                         this_directory_path=act_path.parent / "submission",
@@ -61,7 +61,7 @@ class TestAdvancedAgent():
         act_list = [act_path.parent / "submission" / "action_sets" / "actionspace_tuples.npy",
                     act_path.parent / "submission" / "action_sets" / "actionspace_nminus1.npy"]
         env = test_env
-        old_m, new_m = test_submission_models
+        _, new_m = test_submission_models
         agent = MyAgent(env.action_space, model_path=new_m,
                         this_directory_path=act_path.parent / "submission",
                         action_space_path=act_list,
@@ -87,7 +87,7 @@ class TestAdvancedAgent():
 
         assert isinstance(action, grid2op.Action.BaseAction)
 
-        obs_new, rew, done, info = env.step(action)
+        _, rew, done, info = env.step(action)
         assert done is False
 
         # Check if tuple works:
