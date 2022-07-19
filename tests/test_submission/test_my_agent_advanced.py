@@ -94,7 +94,8 @@ class TestAdvancedAgent():
         assert isinstance(agent.next_actions, types.GeneratorType)
 
         with pytest.raises(StopIteration):
-            next(agent.next_actions)
+            for _ in range(2):
+                next(agent.next_actions)
 
     # def test_action_old(self, test_env, test_submission_models,test_paths_env):
     #     """ Testing, whether the init works, especially the models
