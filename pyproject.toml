@@ -19,21 +19,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-[tool.setuptools]
-py-modules = ['curriculumagent']
-
-[project.urls]
-"Homepage" = "https://github.com/FraunhoferIEE/CurriculumAgent"
-"Bug Tracker" = "https://github.com/FraunhoferIEE/CurriculumAgent/issues"
-
-[tool.versioningit.vcs]
-# The method key:
-method = "git"  # <- The method name
-
-# Parameters to pass to the method:
-match = ["v*"]
-default-tag = "0.1.0"
-
 dependencies = [
     "grid2op==1.7.1",
     "numpy==1.21.0",
@@ -55,3 +40,20 @@ dependencies = [
     "l2rpn_baselines",
     "sklearn",
 ]
+
+
+[tool.setuptools]
+py-modules = ['curriculumagent']
+
+[project.urls]
+"Homepage" = "https://github.com/FraunhoferIEE/CurriculumAgent"
+"Bug Tracker" = "https://github.com/FraunhoferIEE/CurriculumAgent/issues"
+
+[tool.versioningit.vcs]
+# The method key:
+method = "git"  # <- The method name
+
+# Parameters to pass to the method:
+match = ["v*"]
+default-tag = "0.1.0"
+
