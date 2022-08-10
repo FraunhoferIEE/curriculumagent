@@ -43,7 +43,7 @@ dependencies = [
 
 
 [tool.setuptools]
-py-modules = ['curriculumagent']
+packages = ['curriculumagent']
 
 [project.urls]
 "Homepage" = "https://github.com/FraunhoferIEE/curriculumagent"
