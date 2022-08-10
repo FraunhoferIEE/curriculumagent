@@ -52,9 +52,6 @@ dependencies = [
     "defopt==6.1.0",
     "nni==2.6.1",
     "grpcio==1.43",
-    "jupyter",
     "l2rpn_baselines",
     "sklearn",
-    "sphinx-autodoc-typehints",
-    "sphinx_rtd_theme",
 ]
