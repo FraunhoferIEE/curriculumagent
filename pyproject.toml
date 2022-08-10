@@ -35,7 +35,7 @@ dependencies = [
     "tensorflow==2.7.0",
     "gym==0.21.0",
     "defopt==6.1.0",
-    "nni==2.6.1",
+    "nni",
     "grpcio==1.43",
     "l2rpn_baselines",
     "sklearn",

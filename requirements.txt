@@ -13,7 +13,7 @@ ray[rllib]==1.10.0
 tensorflow==2.7.0
 gym==0.21.0
 defopt==6.1.0
-nni==2.6.1
+nni
 grpcio==1.43
 jupyter
 l2rpn_baselines
