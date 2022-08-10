@@ -5,7 +5,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "CurriculumAgent"
+name = "curriculumagent"
 dynamic = ["version"]
 authors = [
     { name = "Malte Lehna", email = "malte.lehna@iee.fraunhofer.de" },
@@ -46,8 +46,8 @@ dependencies = [
 py-modules = ['curriculumagent']
 
 [project.urls]
-"Homepage" = "https://github.com/FraunhoferIEE/CurriculumAgent"
-"Bug Tracker" = "https://github.com/FraunhoferIEE/CurriculumAgent/issues"
+"Homepage" = "https://github.com/FraunhoferIEE/curriculumagent"
+"Bug Tracker" = "https://github.com/FraunhoferIEE/curriculumagent/issues"
 
 [tool.versioningit.vcs]
 # The method key:
