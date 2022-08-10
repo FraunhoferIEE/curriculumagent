@@ -43,7 +43,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: Build Files
-          path: cov_html/
+          path: dist/
           retention-days: 7
         if: ${{ always() }}
         # Publishing on Testpipy
