@@ -39,16 +39,16 @@ jobs:
         run: |
           pip install build
           python -m build
-      -name: Archive Build reults
+      - name: Archive Build results
         uses: actions/upload-artifact@v3
         with:
           name: Build Files
           path: cov_html/
           retention-days: 7
         if: ${{ always() }}
-      - name: Publish package
         # Publishing on Testpipy
         #uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+      - name: Publish package
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
