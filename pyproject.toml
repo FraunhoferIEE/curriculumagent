@@ -46,7 +46,7 @@ dependencies = [
 packages = ['curriculumagent']
 
 [tool.setuptools.packages]
-find = {}
+find = { }
 
 [tool.setuptools.packages.find]
 where = ["curriculumagent"]
