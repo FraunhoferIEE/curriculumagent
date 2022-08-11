@@ -32,9 +32,8 @@ def get_configs() -> Tuple[SeniorEnvRllib, AdvancedCustomModel]:
 
     """
     Agent_Path = Path(__file__).parent.parent.parent
-    actions = [Agent_Path / "action_space"/ "new" / "actionspace_tuples.npy",
-               Agent_Path / "action_space" / "new" / "actionspace_nminus1.npy"]
-    target = Agent_Path / 'senior'/"JuniorModel_new"
+    actions = [Agent_Path / "action_space"/ "new" / "actionspace_208_poth.npy"]
+    target = Agent_Path / 'senior'/"JuniorModel"
 
     e_c = {"action_space_path": actions,
            "data_path": Agent_Path.parent/"training_data_track1",

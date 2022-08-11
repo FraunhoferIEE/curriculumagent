@@ -29,7 +29,7 @@ def train_senior():
 
     DATA_PATH = Path('~/data_grid2op/l2rpn_neurips_2020_track1_small').expanduser()
     ACTION_SPACE_DIRECTORY = '../action_space'
-    junior_model = Path(__file__).parent /"JuniorModel_new"
+    junior_model = Path(__file__).parent /"JuniorModel"
 
 
     ray.init(num_cpus=NUM_CPUS, num_gpus=NUM_GPUS)

@@ -335,18 +335,4 @@ if __name__ == '__main__':
     tutor_original = original_tutor.Tutor(env.action_space, old_actionspace_path=old_action_space_path)
     tutor_original_report = load_or_run(tutor_original, env, output_path, name="Tutor Original")
 
-    action_space_path = Path(__file__).parent.parent / 'action_space' / 'new'
-
-    tutor_nminus1 = original_tutor.Tutor(env.action_space,
-                                         action_space_file=action_space_path / Path('./actionspace_nminus1_250.npy'))
-    tutor_nminus1_report = load_or_run(tutor_nminus1, env, output_path, name="Tutor N-1(250 ScoreActions)")
-
-    # Score submission agent
-    submission_path = Path(__file__).parent.parent / "submission"
-
-    action_list = [submission_path / "action_sets" / "actionspace_tuples.npy",
-                   submission_path / "action_sets" / "actionspace_nminus1.npy"]
-    with open(submission_path / "scaler_junior.pkl", "rb") as fp:  # Pickling
-        scaler = pickle.load(fp)
-
-    render_report(Path('report.md'), tutor_nminus1_report, [tutor_original_report, dn_report])
+    render_report(Path('report.md'), tutor_original_report, [ dn_report])

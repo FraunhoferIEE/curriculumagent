@@ -297,13 +297,8 @@ def main():
     DATA_PATH = Path('~/data_grid2op/l2rpn_neurips_2020_track1_small').expanduser()
 
     SAVE_PATH = '../../junior/training_data'
-    ACTION_SPACE_DIRECTORY = '../action_space'
     NUM_CHRONICS = 100
     TOTAL_CHRONICS = len(os.listdir(DATA_PATH / 'chronics'))
-    # ACTION_LIST = [Path(ACTION_SPACE_DIRECTORY) / "new" / "actionspace_triples.npy",
-    #                Path(ACTION_SPACE_DIRECTORY) / "new" / "actionspace_tuples.npy",
-    #                Path(ACTION_SPACE_DIRECTORY) / "new" / "300_both.npy",
-    #                ]
 
     test_env_path = Path(__file__).parent.parent.parent / "tests" / "data" / "action_spaces"
     action_list = [test_env_path / "test_tuple.npy",
