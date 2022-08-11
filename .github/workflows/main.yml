@@ -38,7 +38,7 @@ jobs:
       - name: Build package
         run: |
           pip install build
-          python -m build --sdist --wheel --zip-safe=False --outdir dist/ .
+          python -m build --sdist --wheel --zip-safe=false --outdir dist/ .
       - name: Archive Build results
         uses: actions/upload-artifact@v3
         with:
