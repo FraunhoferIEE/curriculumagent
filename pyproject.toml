@@ -45,6 +45,12 @@ dependencies = [
 [tool.setuptools]
 packages = ['curriculumagent']
 
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.packages.find]
+where = ["curriculumagent"]
+
 [project.urls]
 "Homepage" = "https://github.com/FraunhoferIEE/curriculumagent"
 "Bug Tracker" = "https://github.com/FraunhoferIEE/curriculumagent/issues"
