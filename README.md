@@ -18,7 +18,7 @@ Setup
 All requirements are listed in `requirements.txt`. Installing the package should already give you all needed 
 requirements. Furthermore, the package can also be installed via
 ```{python}
-pip install CurriculumAgent
+pip install curriculumagent
 ```
 
 
