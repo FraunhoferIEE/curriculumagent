@@ -25,6 +25,8 @@ class MyAgent(BaseAgent):
         chosen += list(range(656, 715)) + list(range(715, 774)) + list(range(774, 833)) + list(range(833, 1010))
         chosen += list(range(1010, 1069)) + list(range(1069, 1105)) + list(range(1105, 1164)) + list(range(1164, 1223))
         self.chosen = chosen
+        print('Franktest')
+        print(os.path.join(this_directory_path, './ppo-ckpt'))
         self.ppo = tf.keras.models.load_model(os.path.join(this_directory_path, './ppo-ckpt'))
         self.last_step = datetime.datetime.now()
         self.recovery_stack = []
