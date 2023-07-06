@@ -24,7 +24,7 @@ jobs:
            pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
   tests:
-    needs: build
+    needs: pylint
     runs-on: ubuntu-latest
     strategy:
       matrix:
