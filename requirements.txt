@@ -12,8 +12,8 @@ ray[tune]==2.4.0
 ray[rllib]==2.4.0
 defopt
 grpcio
-tensorflow
-tensorflow-probability
+tensorflow==2.12.1
+tensorflow-probability==0.20.1
 jupyter
 l2rpn_baselines
 scikit-learn
