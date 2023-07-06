@@ -1,0 +1,31 @@
+authorName: CurriculumAgent
+experimentName: Junior
+trialConcurrency: 4
+maxExecDuration: 48h
+maxTrialNum: 1000
+trainingServicePlatform: local
+# The path to Search Space
+searchSpacePath: search_space.json
+useAnnotation: false
+advisor:
+  builtinAdvisorName: BOHB
+  classArgs:
+    optimize_mode: maximize
+    min_budget: 1
+    max_budget: 100
+    eta: 3
+    min_points_in_model: 17
+    top_n_percent: 20
+    num_samples: 128
+    random_fraction: 0.33
+    bandwidth_factor: 3.0
+    min_bandwidth: 0.001
+# The path and the running command of trial
+trial:
+  command: hyper_parameter_search_junior.py
+  codeDir: .
+  gpuNum: 0 # change for GPU
+
+localConfig:
+  maxTrialNumPerGpu:  0 # change for GPU
+  useActiveGpu: false  # change for GPU

@@ -1,0 +1,8 @@
+# Please add requirements for development here
+-r requirements.txt
+twine
+tabulate
+tox
+pytest
+pytest-benchmark
+pylint
