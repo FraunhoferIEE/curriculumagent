@@ -26,10 +26,6 @@ jobs:
         run: |
           pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
-  tests:
-    needs: pylint
-    runs-on: ubuntu-latest
-    steps:
       - name: Test with pytest
         run: |
           pip install pytest-cov pytest-benchmark
@@ -42,10 +38,6 @@ jobs:
           path: cov_html/
           retention-days: 7
         if: ${{ always() }}
-  build: # Release
-    needs: tests
-    runs-on: ubuntu-latest
-    steps:
       - name: Build Package
         run: python -m build
       - name: Publish package

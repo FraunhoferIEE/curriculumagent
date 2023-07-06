@@ -23,10 +23,6 @@ jobs:
         run: |
            pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
-  tests:
-    needs: pylint
-    runs-on: ubuntu-latest
-    steps:
       - name: Test with pytest
         run: |
           pip install pytest-cov pytest-benchmark
