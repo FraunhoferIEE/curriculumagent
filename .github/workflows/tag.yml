@@ -29,16 +29,12 @@ jobs:
   tests:
     needs: pylint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ci_index: [ 0, 1, 2, 3 ]
-        ci_total: [ 4 ]
     steps:
       - name: Test with pytest
         run: |
           pip install pytest-cov pytest-benchmark
-          pip install pytest-test-groups
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/ --test-group-count=${{ matrix.ci_total }} --test-group=${{ matrix.ci_index }}
+          pip install pytest-parallel
+          pytest --workers auto --cov-report html:cov_html --cov=curriculumagent tests/
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
