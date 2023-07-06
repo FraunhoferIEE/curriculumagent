@@ -35,7 +35,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install pytest-test-groups
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/ --test-group-count ${{ matrix.ci_total }} --test-group=${{ matrix.ci_index }}
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/ --test-group-count ${{ matrix.ci_total }} --test-group ${{ matrix.ci_index }}
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
