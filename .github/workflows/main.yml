@@ -30,8 +30,8 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest-cov pytest-benchmark
-          pip install pytest-parallel
-          pytest --workers auto --cov-report html:cov_html --cov=curriculumagent tests/
+          pip install pytest-xdist
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -n auto
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
