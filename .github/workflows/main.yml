@@ -4,7 +4,6 @@ on: [push]
 
 jobs:
   pipeline:
-
     runs-on: ubuntu-latest
     steps:
       # Install python and dependencies:
@@ -23,11 +22,46 @@ jobs:
         run: |
            pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
-      - name: Test with pytest
+  test1:
+    runs-on: ubuntu-latest
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 1
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_baseline -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_common -m "not slow" -s
+  test2:
+    needs: test1
+    runs-on: ubuntu-latest
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 2
+        run: |
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_junior -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior -m "not slow" -s
+  test3:
+    needs: test2
+    runs-on: ubuntu-latest
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 3
+        run: |
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_submission -m "not slow" -s
+  test4:
+    needs: test3
+    runs-on: ubuntu-latest
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 4
+        run: |
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -m "not slow" -s
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
