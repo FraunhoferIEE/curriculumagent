@@ -22,4 +22,5 @@ nni
 nni[BOHB]
 ConfigSpace
 typeguard<3
+pathlib
 filelock==3.10
