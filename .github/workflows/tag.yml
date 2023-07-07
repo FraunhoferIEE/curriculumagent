@@ -1,4 +1,4 @@
-name: CI
+name: Tag
 
 on:
   push:
@@ -29,9 +29,8 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest-cov pytest-benchmark
-          pip install pytest-xdist
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -n auto -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -m "not slow" -s
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
