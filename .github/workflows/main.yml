@@ -51,7 +51,13 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_model -m "not slow" -s
+          echo "First"
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_env_rllib -m "not slow" -s
+          echo "Second"
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_toporew -m "not slow" -s
+          echo "Third"
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_student -m "not slow" -s
   test25:
     needs: pipeline
     runs-on: ubuntu-latest
