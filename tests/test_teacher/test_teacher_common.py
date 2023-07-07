@@ -1,5 +1,6 @@
 import grid2op
 import numpy as np
+import pytest
 from grid2op.Action import BaseAction
 from grid2op.Environment import BaseEnv
 
@@ -41,7 +42,7 @@ def test_affected_substations_comparison():
         affected_real = sorted([int(v) for v in act.as_dict()["set_bus_vect"]["modif_subs_id"]])
         assert affected_substations(act) == affected_real
 
-
+@pytest.mark.slow
 def test_benchmark_count_substations(benchmark):
     env: BaseEnv = grid2op.make(dataset="l2rpn_case14_sandbox")
     action_space = env.action_space
@@ -55,7 +56,7 @@ def test_benchmark_count_substations(benchmark):
 
     benchmark(count_substations, act)
 
-
+@pytest.mark.slow
 def test_benchmark_count_substations_original(benchmark):
     env: BaseEnv = grid2op.make(dataset="l2rpn_case14_sandbox")
     action_space = env.action_space
