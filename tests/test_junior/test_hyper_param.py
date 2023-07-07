@@ -85,7 +85,6 @@ class TestNNIHyperOpt:
 
     @pytest.mark.ultra_slow
     @pytest.mark.slow
-    @pytest.skip
     def test_run_nni_experiment(self, test_temp_save, test_path_data):
         """
         Testing if the hyper-optimization works with NNI. This is only the check, whether the initialization of the
