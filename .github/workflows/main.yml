@@ -20,25 +20,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pylint pytest pytest-cov
+          pip install pylint pytest pytest-cov pytest-benchmark
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       # Run pylint
       - name: Run Pylint for checking of Syntax
         run: |
            pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
-  testpreparation:
-    runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
-    steps:
-      # Install python and dependencies:
-      - uses: actions/checkout@v3
-      - name: Test with pytest number 1
-        run: |
-          pip install pytest-cov pytest-benchmark
-          pip install -r requirements-dev.txt
   test1:
-    needs: testpreparation
+    needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
     steps:
@@ -51,7 +41,7 @@ jobs:
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_baseline -m "not slow" -s
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_common -m "not slow" -s
   test2:
-    needs: testpreparation
+    needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
     steps:
@@ -59,10 +49,12 @@ jobs:
       - uses: actions/checkout@v3
       - name: Test with pytest number 2
         run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_junior -m "not slow" -s
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior -m "not slow" -s
   test3:
-    needs: testpreparation
+    needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
     steps:
@@ -70,9 +62,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: Test with pytest number 3
         run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_submission -m "not slow" -s
   test4:
-    needs: testpreparation
+    needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
     steps:
@@ -80,6 +74,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Test with pytest number 4
         run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -m "not slow" -s
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -m "not slow" -s
       - name: Archive Test results
