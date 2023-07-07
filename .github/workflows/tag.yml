@@ -6,7 +6,7 @@ on:
       - '*'           # Push events to every tag not containing /
 
 jobs:
-  pylint:
+  build:
 
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +30,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install pytest-xdist
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -n auto -m slow
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -n auto -m "not slow"
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
