@@ -84,7 +84,7 @@ class TestNNIHyperOpt:
         exp_config.validate()
 
     @pytest.mark.ultra_slow
-    @pytest.slow
+    @pytest.mark.slow
     @pytest.skip
     def test_run_nni_experiment(self, test_temp_save, test_path_data):
         """

@@ -229,7 +229,7 @@ class TestBaselineAgent:
         os.mkdir(test_temp_save)
 
     @pytest.mark.ultra_slow
-    @pytest.slow
+    @pytest.mark.slow
     def test_training_senior(self, test_baseline_models, test_temp_save):
         """
         Testing, whether the simple training of the senior works

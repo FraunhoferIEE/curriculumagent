@@ -16,7 +16,7 @@ class TestLoadOrRun:
     Testing the load or run
     """
 
-    @pytest.slow
+    @pytest.mark.slow
     def test_load_or_run(self, test_env, test_temp_save):
         """
         Check if temporary save is empty, if not delete old files

@@ -12,7 +12,7 @@ from curriculumagent.teacher.teachers.tuple_triple_teacher import run_multi_teac
 
 @pytest.mark.skip(reason="takes too long")
 @pytest.mark.ultra_slow
-@pytest.slow
+@pytest.mark.slow
 def test_tuple_teacher_run():
     """
     Quickly test the tutor by running it for a small(300) number of steps in the test environment
