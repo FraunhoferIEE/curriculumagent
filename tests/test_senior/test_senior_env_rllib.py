@@ -487,7 +487,7 @@ class ImportRLib:
         Testing import ray
         """
         import ray as ray
-        assert ray.__version__ == "2.5.0"
+        assert ray.__version__ == "2.5.1"
 
     def test_import_rllib(self):
         """

@@ -7,9 +7,9 @@ tqdm>=4.62.2
 LightSim2Grid>=0.7.1
 ubelt>=0.10.1
 gymnasium
-ray==2.4.0
-ray[tune]==2.5.0
-ray[rllib]==2.5.0
+ray==2.5.1
+ray[tune]==2.5.1
+ray[rllib]==2.5.1
 defopt
 grpcio
 tensorflow==2.12.1
