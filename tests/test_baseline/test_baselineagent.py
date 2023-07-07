@@ -18,11 +18,6 @@ class TestBaselineAgent:
     Test suite of the baseline agent
     """
 
-    def test_import(self):
-        """
-        Testing, whether the import works
-        """
-
     def test_init(self):
         """
         Testing, whether the model is correctly loaded
@@ -234,6 +229,7 @@ class TestBaselineAgent:
         os.mkdir(test_temp_save)
 
     @pytest.mark.ultra_slow
+    @pytest.slow
     def test_training_senior(self, test_baseline_models, test_temp_save):
         """
         Testing, whether the simple training of the senior works

@@ -151,6 +151,7 @@ class TestSenior:
         ray.shutdown()
 
     @pytest.mark.ultra_slow
+    @pytest.slow
     def test_train_runs_without_errors(self, senior_values):
         """
         Testing of training
@@ -174,6 +175,7 @@ class TestSenior:
         os.mkdir(test_temp_save)
 
     @pytest.mark.ultra_slow
+    @pytest.slow
     def test_train_default(self, senior_values):
         """
         Testing of training

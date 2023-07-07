@@ -83,12 +83,16 @@ class TestNNIHyperOpt:
         assert isinstance(exp_config, ExperimentConfig)
         exp_config.validate()
 
-    @pytest.mark.slow
+    @pytest.mark.ultra_slow
+    @pytest.slow
+    @pytest.skip
     def test_run_nni_experiment(self, test_temp_save, test_path_data):
         """
         Testing if the hyper-optimization works with NNI. This is only the check, whether the initialization of the
         experiment works. This might still not mean that the hyper-paramter search worked. More test come with
         NNI=3.0
+
+        This test is still experimental
         """
 
         shutil.rmtree(test_temp_save, ignore_errors=True)

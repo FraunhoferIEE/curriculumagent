@@ -9,10 +9,7 @@ from lightsim2grid import LightSimBackend
 
 
 class TestEvaluateBaseline:
-    def test_import(self):
-        """
-        Test if import works
-        """
+    """ Testing the evaluation"""
 
     @pytest.mark.slow
     def test_evaluate(self, test_baseline_models, test_temp_save):

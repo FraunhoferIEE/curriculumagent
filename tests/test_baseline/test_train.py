@@ -8,12 +8,11 @@ from lightsim2grid import LightSimBackend
 
 
 class TestTrainBaseline:
-    def test_import(self):
-        """
-        Test if import works
-        """
-
+    """
+    Run Training
+    """
     @pytest.mark.ultra_slow
+    @pytest.slow
     def test_run_training(self, test_temp_save):
         """
         Testing, whether the model can be saved and loaded completely.

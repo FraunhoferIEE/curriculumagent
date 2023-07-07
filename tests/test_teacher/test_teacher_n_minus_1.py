@@ -98,6 +98,7 @@ class TestN1Agent:
         assert last_rho > obs.rho.max()
 
     @pytest.mark.ultra_slow
+    @pytest.slow
     def test_n_minus_one_agent(self, test_paths_env):
         """
         Testing, whether the n_minus_one_agent returns some variables

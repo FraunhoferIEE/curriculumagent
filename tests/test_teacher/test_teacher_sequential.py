@@ -62,6 +62,7 @@ class TestTopologySequential:
         assert current_rho - new_rho > 0
 
     @pytest.mark.ultra_slow
+    @pytest.slow
     def test_tripple_actions(self, test_paths_env, test_action_possibilities):
         """
         Testing, whether two tuple actions are selected

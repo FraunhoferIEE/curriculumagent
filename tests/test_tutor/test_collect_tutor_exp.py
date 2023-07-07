@@ -10,7 +10,7 @@ from curriculumagent.tutor.collect_tutor_experience import prepare_dataset
 
 class TestCreateJuniorData:
     """
-    Test Suite of the create Junior data
+    Test Suite for the creation of the Junior data
     """
 
     def test_prepare_dataset(self, test_action_paths):
