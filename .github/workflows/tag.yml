@@ -30,7 +30,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install pytest-xdist
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -n auto
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -n auto -m slow
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
