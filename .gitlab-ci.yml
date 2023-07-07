@@ -60,7 +60,7 @@ tests:
   script:
     - pip install pytest-cov pytest-benchmark
     - pip install pytest-test-groups
-    - pip install requirements-dev.txt
+    - pip install -r requirements-dev.txt
     - pytest --cov-report html:cov_html --cov=curriculumagent tests/ --test-group-count $CI_NODE_TOTAL --test-group=$CI_NODE_INDEX
   dependencies: [ ]
   artifacts:
