@@ -21,6 +21,8 @@ from curriculumagent.senior.rllib_execution.alternative_rewards import PPO_Rewar
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: Tests will be slow. ")
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "gitlabonly: Test only for gitlab, because not enought resources on github. ")
 
 def pytest_addoption(parser):
     parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")

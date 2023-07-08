@@ -27,7 +27,7 @@ jobs:
         run: |
            pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
-  test1:
+  testbaseline:
     needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
@@ -38,8 +38,8 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_model.py -m "not slow" -s
-  test2:
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_baseline -s
+  testcommon:
     needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
@@ -50,8 +50,8 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_env_rllib.py -m "not slow" -s
-  test25:
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_common -s
+  testjunior:
     needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
@@ -62,8 +62,8 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_toporew.py -m "not slow" -s
-  test3:
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_junior -s
+  testsenior:
     needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
@@ -74,8 +74,8 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_student.py -m "not slow" -s
-  test4:
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior -m "not gitlabonly" -s
+  testtutor:
     needs: pipeline
     runs-on: ubuntu-latest
     environment: ${{ vars.ENVIRONMENT_STAGE }}
@@ -86,8 +86,26 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -m "not slow" -s
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -s
+      - name: Archive Test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: Test Coverage
+          path: cov_html/
+          retention-days: 7
+        if: ${{ always() }}
+  testteacher:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 4
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:

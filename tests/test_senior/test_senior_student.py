@@ -13,7 +13,7 @@ from curriculumagent.senior.rllib_execution.senior_env_rllib import SeniorEnvRll
 from curriculumagent.senior.senior_student import Senior
 from curriculumagent.submission.my_agent import MyAgent
 
-
+@pytest.mark.gitlabonly
 class TestSenior:
     """
     Testing the Senior class and all its underlying methods
