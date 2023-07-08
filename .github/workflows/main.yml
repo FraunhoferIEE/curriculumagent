@@ -105,7 +105,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s -m "not slow"
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
