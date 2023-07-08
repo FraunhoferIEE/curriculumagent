@@ -121,6 +121,7 @@ jobs:
       - name: Install for safety again all requirements
         run: |
           pip install -r requirements-dev.txt
+          pip install build
       - name: Build Package
         run: python -m build
       - name: Publish package
