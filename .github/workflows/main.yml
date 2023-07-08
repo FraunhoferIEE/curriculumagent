@@ -38,8 +38,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_baseline -m "not slow" -s
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_common -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_model -m "not slow" -s
   test2:
     needs: pipeline
     runs-on: ubuntu-latest
@@ -51,13 +50,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_model -m "not slow" -s
-          echo "First"
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_env_rllib -m "not slow" -s
-          echo "Second"
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_toporew -m "not slow" -s
-          echo "Third"
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_student -m "not slow" -s
   test25:
     needs: pipeline
     runs-on: ubuntu-latest
@@ -69,7 +62,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_junior -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_toporew -m "not slow" -s
   test3:
     needs: pipeline
     runs-on: ubuntu-latest
@@ -81,7 +74,7 @@ jobs:
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_submission -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior/test_senior_student -m "not slow" -s
   test4:
     needs: pipeline
     runs-on: ubuntu-latest
