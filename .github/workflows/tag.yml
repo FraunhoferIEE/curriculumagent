@@ -6,9 +6,9 @@ on:
       - '*'           # Push events to every tag not containing /
 
 jobs:
-  build:
-
+  pipeline:
     runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
@@ -19,18 +19,73 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pylint pytest pytest-cov
+          pip install pylint pytest pytest-cov pytest-benchmark
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       # Run pylint
       - name: Run Pylint for checking of Syntax
         run: |
           pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
-      - name: Test with pytest
+  testbaseline:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 1
         run: |
           pip install pytest-cov pytest-benchmark
           pip install -r requirements-dev.txt
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/ -m "not slow" -s
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_baseline -s
+  testcommon:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 2
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_common -s
+  testjunior:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 2
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_junior -s
+  testsenior:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 3
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior -m "not gitlabonly" -s
+  testtutor:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 4
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -s
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
@@ -38,6 +93,34 @@ jobs:
           path: cov_html/
           retention-days: 7
         if: ${{ always() }}
+  testteacher:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 4
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s
+      - name: Archive Test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: Test Coverage
+          path: cov_html/
+          retention-days: 7
+        if: ${{ always() }}
+  build:
+    needs: [testteacher,testtutor,testjunior,testsenior,testcommon,testbaseline]
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install for safety again all requirements
+        run: |
+          pip install -r requirements-dev.txt
       - name: Build Package
         run: python -m build
       - name: Publish package
