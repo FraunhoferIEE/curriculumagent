@@ -93,7 +93,11 @@ if __name__ == '__main__':
         author=about.__author__,
         description=about.__description__,
         classifiers=CLASSIFIERS,
-        # long_description='???',
+        long_description = open('README.md').read(),
+        long_description_content_type = 'text/markdown',
+        #long_description='CurriculumAgent is a cleanup and improved version of the NeurIPS 2020 Competition Agent by '
+        #                 'Binbinchen.The agent is build to extract action sets of the Grid2Op Environment and then '
+        #                 'use rule-based agent to train a Reinforcement Learning agent.',
         # license='???',
         # url='???'  # should link somewhere, perhaps to the docs
         project_urls=URLS,
