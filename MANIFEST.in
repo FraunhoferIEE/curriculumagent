@@ -1,2 +1,3 @@
 include versioneer.py
 include curriculumagent/_version.py
+include requirements.txt
