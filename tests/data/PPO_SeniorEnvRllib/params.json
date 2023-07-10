@@ -1,0 +1,47 @@
+{
+  "clip_param": 0.1374655548551596,
+  "eager_tracing": true,
+  "entropy_coeff": 0.001743242470280627,
+  "env": "<class 'curriculumagent.senior.rllib_execution.senior_env_rllib.SeniorEnvRllib'>",
+  "env_config": {
+    "action_space_path": [
+      "/mnt/home/mlehna/wcci_2022_actions.npy",
+      "/mnt/home/mlehna/maze_actions.npy"
+    ],
+    "action_threshold": 0.95,
+    "env_path": "/mnt/home/mlehna/l2rpn_wcci_2022",
+    "filtered_obs": true,
+    "scaler": "/mnt/home/mlehna/scaler_junior.pkl",
+    "topo": true
+  },
+  "framework": "tf2",
+  "gamma": 0.9977448241098217,
+  "lr": 5e-05,
+  "model": {
+    "custom_model": "SeniorN1",
+    "custom_model_config": {
+      "custom_config": {
+        "TRIAL_BUDGET": 100,
+        "activation": "elu",
+        "batchsize": 256,
+        "dropout1": 0.018195067193059022,
+        "dropout2": 0.32907678342440344,
+        "epochs": 1000,
+        "initializer": "RN",
+        "layer1": 1032.228390773144,
+        "layer2": 239.69398910901413,
+        "layer3": 1236.3175666745672,
+        "layer4": 1163.4560269775084,
+        "learning_rate": 0.00016864815673883727
+      },
+      "path_to_junior": "/mnt/home/mlehna/my_model"
+    }
+  },
+  "num_cpus_per_worker": 1,
+  "num_envs_per_worker": 1,
+  "num_gpus": 0,
+  "num_sgd_iter": 4,
+  "num_workers": 50,
+  "remote_worker_envs": false,
+  "vf_loss_coeff": 0.8630166816846072
+}

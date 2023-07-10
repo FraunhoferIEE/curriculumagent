@@ -1,176 +1,264 @@
 import os
 import shutil
-from pathlib import Path
 
 import grid2op
-import numpy as np
-import ray
-from lightsim2grid import LightSimBackend
-
 import pytest
-from grid2op.Agent import BaseAgent
+import ray
 import tensorflow as tf
-from curriculumagent.baseline import CurriculumAgent, evaluate
-from curriculumagent.submission.my_agent_advanced import MyAgent
+from grid2op.Agent import BaseAgent
+from lightsim2grid import LightSimBackend
+from tensorflow.keras.models import Sequential
+
+from curriculumagent.baseline import CurriculumAgent
+from curriculumagent.submission.my_agent import MyAgent
 
 
-class TestBaselineAgent():
+class TestBaselineAgent:
     """
     Test suite of the baseline agent
     """
 
-    @pytest.mark.slow
-    def test_init(self, test_paths_ieee_model):
+    def test_init(self):
         """
         Testing, whether the model is correctly loaded
         """
+
         env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
         env.reset()
-        path_of_model = test_paths_ieee_model
 
-        myagent = CurriculumAgent(
-            action_space=env.action_space,
-            model_path=path_of_model,
-            name="Test")
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="El Testo")
 
+        # Test the default values
         assert isinstance(myagent, BaseAgent)
+        assert isinstance(myagent.observation_space, grid2op.Observation.ObservationSpace)
+        assert isinstance(myagent.action_space, grid2op.Action.ActionSpace)
+        assert myagent.name == "El Testo"
+        assert myagent.senior is None
+        assert myagent.agent is None
+        assert myagent.do_nothing.as_dict() == {}
 
-    @pytest.mark.slow
-    def test_runnable(self, test_paths_ieee_model):
+    def test_runnable_do_nothing(self):
         """
         Testing, whether the model is runnable
         """
-        assert grid2op.__version__ == "1.7.1"
+
         env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
         env.reset()
-        path_of_model = test_paths_ieee_model
 
-        myagent = CurriculumAgent(
-            action_space=env.action_space,
-            model_path=path_of_model,
-            name="Test")
-
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="El Testo Secundo")
+        env.seed(42)
         obs = env.reset()
         assert obs.to_vect().shape == (467,)
         done = False
         while not done:
-            act = myagent.act(observation=obs, reward=0, done=False)
+            with pytest.warns():
+                act = myagent.act(observation=obs, reward=0, done=False)
+            assert act.as_dict() == {}
             obs, rew, done, info = env.step(act)
         assert done
 
-    @pytest.mark.slow
-    def test_save_and_load(self, test_paths_ieee_model):
+    def test_load_errors(self, test_baseline_models):
         """
-        Testing, whether the model can be saved and loaded completely.
+        Testing, whether the errors are correctly raised!
         """
-        assert grid2op.__version__ == "1.7.1"
+
+        senior_path, junior_path = test_baseline_models
+
         env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
-        env.reset()
-        path_of_model = test_paths_ieee_model
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="El Junior agento")
 
-        myagent = CurriculumAgent(
-            action_space=env.action_space,
-            model_path=path_of_model,
-            name="Test")
+        # In the junior path we do not have the action file
+        with pytest.raises(FileNotFoundError):
+            myagent.load(junior_path)
 
-        data_path = Path(__file__).parent.parent / "data" / "temporary_save"
-        if not data_path.is_dir():
-            data_path.mkdir(exist_ok=True, parents=True)
-        assert len(os.listdir(data_path)) == 0
+        # Here only a npy file exists.
+        with pytest.raises(FileNotFoundError):
+            myagent.load(senior_path / "actions")
 
-        myagent.save(data_path)
+    def test_loading_junior_with_separate_action_file(self, test_baseline_models):
+        """
+        Testing, whether loading the junior model works.
+        """
+        senior_path, junior_path = test_baseline_models
 
-        # Check if model is saved
-        agent_path = data_path / "agent"
-        assert agent_path.is_dir()
-        assert (agent_path / "actions" / "CA_actions.npy").is_file()
-        assert (agent_path / "model" / "saved_model.pb").is_file()
+        env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="El Junior agento")
 
-        # Now load model: #
-        #  For this we overwrite the model:
-        assert myagent.model_path != agent_path / "model"
-        myagent.agent = []
-        assert myagent.agent == []
-        myagent.load(data_path)
-        assert myagent.model_path == agent_path / "model"
+        assert myagent.agent is None
+
+        # Now load junior model, with separate action file
+        myagent.load(path=junior_path,
+                     actions_path=senior_path / "actions")
         assert isinstance(myagent.agent, MyAgent)
+        assert isinstance(myagent.agent.model, Sequential)
 
-        # Now lastly let's delete the model:
-        shutil.rmtree(agent_path, ignore_errors=True)
+        # Test, wether model works:
+        obs = env.reset()
+        act = myagent.act(observation=obs, reward=0, done=False)
+        assert isinstance(act, grid2op.Action.BaseAction)
 
-    @pytest.mark.slow
-    def test_evaluate(self, test_paths_ieee_model):
+    def test_loading_senior_with_subset(self, test_baseline_models):
         """
-        Testing, whether the evaluate methode works
+        Testing, whether loading the junior model works.
         """
-        assert grid2op.__version__ == "1.7.1"
-        env = grid2op.make("l2rpn_case14_sandbox")
-        env.reset()
-        path_of_model = test_paths_ieee_model
-        env = grid2op.make("l2rpn_case14_sandbox")
-        data_path = Path(__file__).parent.parent / "data" / "temporary_save"
-        log_paths = data_path/ "logs"
+        senior_path, _ = test_baseline_models
 
-        if not data_path.is_dir():
-            data_path.mkdir(exist_ok=True, parents=True)
+        env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="El grande senior")
 
-        np.random.seed(42)
-        tf.random.set_seed(42)
-        out = evaluate(env,
-                       load_path= path_of_model,
-                       logs_path= log_paths,
-                       nb_episode=2,
-                       nb_process=1,
-                       max_steps=100,
-                       verbose=0,
-                       save_gif=False)
+        assert myagent.agent is None
 
+        # Now load junior model, with separate action file
+        myagent.load(path=senior_path, subset=False)
+        assert isinstance(myagent.agent, MyAgent)
+        assert isinstance(myagent.agent.model, tf.keras.models.Model)
 
-        assert (log_paths).is_dir()
-        assert (log_paths/"0000").is_dir()
-        assert (log_paths/"0001").is_dir()
-        assert (log_paths / "dict_action_space.json").is_file()
+        # Test, wether model works:
+        obs = env.reset()
+        act = myagent.act(observation=obs, reward=0, done=False)
 
-        # Now lastly let's delete the model:
-        shutil.rmtree(log_paths, ignore_errors=True)
+        assert isinstance(act, grid2op.Action.BaseAction)
+
+    def test_actions_senior(self, test_baseline_models):
+        """
+        Testing multiple action steps
+        """
+        senior_path, _ = test_baseline_models
+
+        env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="Run Forrest Run")
+        myagent.load(path=senior_path)
+
+        obs = env.reset()
+        done = False
+        non_zero = 0
+        while not done:
+            act = myagent.act(observation=obs, reward=0, done=done)
+            if act.as_dict() != {}:
+                non_zero += 1
+            obs, rew, done, info = env.step(act)
+        assert done is True
+        assert non_zero > 0
+
+    def test_actions_junior(self, test_baseline_models):
+        """
+        Testing multiple action steps
+        """
+        senior_path, junior_path = test_baseline_models
+
+        env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="Run little junior, run!")
+
+        assert myagent.agent is None
+
+        # Now load junior model, with separate action file
+        myagent.load(path=junior_path,
+                     actions_path=senior_path / "actions")
+
+        obs = env.reset()
+        done = False
+        non_zero = 0
+        while not done:
+            act = myagent.act(observation=obs, reward=0, done=done)
+            if act.as_dict() != {}:
+                non_zero += 1
+            obs, rew, done, info = env.step(act)
+        assert done is True
+        assert non_zero > 0
+
+    def test_save_baseline(self, test_baseline_models, test_temp_save):
+        """
+        Checking, whether the saving works
+        """
+        senior_path, _ = test_baseline_models
+
+        env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="Run Forrest Run")
+        myagent.load(path=senior_path)
+
+        #
+        shutil.rmtree(test_temp_save, ignore_errors=True)
+        os.mkdir(test_temp_save)
+        assert test_temp_save.is_dir() and len(os.listdir(test_temp_save)) == 0
+
+        myagent.save(test_temp_save)
+
+        assert (test_temp_save / "model" / "saved_model.pb")
+        assert (test_temp_save / "actions" / "actions.npy")
+
+        # Test whether loading works effortlessly:
+        myagent.load(test_temp_save)
+
+        shutil.rmtree(test_temp_save, ignore_errors=True)
+        os.mkdir(test_temp_save)
+
+    def test_create_submission_dir(self,test_baseline_models,test_temp_save):
+        """
+        Testing whether create_submission works
+        """
+        senior_path, _ = test_baseline_models
+
+        env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="Run Forrest Run")
+        myagent.load(path=senior_path)
+
+        #
+        shutil.rmtree(test_temp_save, ignore_errors=True)
+        os.mkdir(test_temp_save)
+        assert test_temp_save.is_dir() and len(os.listdir(test_temp_save)) == 0
+
+        assert myagent.agent is not None
+
+        myagent.create_submission(test_temp_save)
+
+        assert (test_temp_save /"common" / "__init__.py").is_file()
+        assert (test_temp_save / "common" / "obs_converter.py").is_file()
+        assert (test_temp_save / "common" / "utilities.py").is_file()
+        assert (test_temp_save / "my_agent.py").is_file()
+        assert (test_temp_save / "__init__.py").is_file()
+        shutil.rmtree(test_temp_save, ignore_errors=True)
+        os.mkdir(test_temp_save)
 
     @pytest.mark.ultra_slow
-    def test_run_training(self, test_paths_ieee_model):
+    @pytest.mark.slow
+    def test_training_senior(self, test_baseline_models, test_temp_save):
         """
-        Testing, whether the model can be saved and loaded completely.
+        Testing, whether the simple training of the senior works
         """
-        assert grid2op.__version__ == "1.7.1"
+        senior_path, _ = test_baseline_models
+
         env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
-        env.reset()
-        path_of_model = test_paths_ieee_model
-        data_path = Path(__file__).parent.parent / "data" / "temporary_save"
-        if not data_path.is_dir():
-            data_path.mkdir(exist_ok=True, parents=True)
-        assert len(os.listdir(data_path)) == 0
+        myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
+                                  name="Run Forrest Run")
+        myagent.load(path=senior_path)
+        # Delete everything.
+        shutil.rmtree(test_temp_save, ignore_errors=True)
+        os.mkdir(test_temp_save)
+        assert test_temp_save.is_dir() and len(os.listdir(test_temp_save)) == 0
 
-        myagent = CurriculumAgent(
-            action_space=env.action_space,
-            model_path=path_of_model,
-            name="Test")
+        ray.init()
 
+        assert ray.is_initialized
+        assert myagent.senior is None
         myagent.train(env=env,
-                      name="Test",
                       iterations=1,
-                      save_path=data_path,
-                      )
+                      save_path=test_temp_save)
 
-        # Check if files are within the directories
-        for name in ["teacher", "tutor", "junior", "senior"]:
-            assert len(os.listdir(data_path / name)) > 0
+        assert myagent.senior.ppo.iteration == 1
+        assert (test_temp_save / "model" / "saved_model.pb")
+        assert (test_temp_save / "actions" / "actions.npy")
+        # Check if the model was saved correctly:
 
-        # Assert specific files (e.g. the tutor file and the model of the agent)
-        assert (data_path / "teacher" / "general_teacher_experience.csv").is_file()
-        assert (data_path / "tutor" / "tutor_experience.npy").is_file()
-        assert (data_path / "agent" / "actions" / "CA_actions.npy").is_file()
-        assert (data_path / "agent" / "model" / "saved_model.pb").is_file()
-
-        # Now lastly let's delete the model:
-        shutil.rmtree(data_path, ignore_errors=True)
-        data_path.mkdir(exist_ok=True, parents=True)
-        assert len(os.listdir(data_path)) == 0
+        # Back to normal
         ray.shutdown()
+        shutil.rmtree(test_temp_save, ignore_errors=True)
+        os.mkdir(test_temp_save)

@@ -139,12 +139,7 @@ cython_debug/
 .idea
 
 # Dockerfile
-Dockerfile
+# Dockerfile
 
 # Generated documentation from gitlab pages
 public/
-
-# Statistics from l2rpn env
-/data/l2rpn_neurips_2020_test/_statistics_l2rpn_no_overflow_reco/
-/data/l2rpn_neurips_2020_test/_statistics_l2rpn_dn
-#/curriculumagent/submission/rllib_model

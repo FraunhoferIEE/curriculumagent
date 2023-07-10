@@ -25,4 +25,6 @@ Version History
     * Documentation improvements Teacher, Tutor agent
 0.0.7
     * Documentation improvements Junior, Senior agent
+1.0.0
+    * Major Update: Now the CurriculumAgent is able to train on all grids and works with an updated version of tensorflow and ray. Further, many methods are streamlined, bugs were fixed and the amount of tests is increase.This version is also be used in L2RPN-baselines.
 

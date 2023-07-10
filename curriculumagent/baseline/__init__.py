@@ -4,6 +4,6 @@ __all__ = [
     "train"
 ]
 
-from curriculumagent.baseline.baselineagent import CurriculumAgent
+from curriculumagent.baseline.baseline import CurriculumAgent
 from curriculumagent.baseline.evaluate import evaluate
 from curriculumagent.baseline.train import train

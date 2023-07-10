@@ -7,16 +7,19 @@ Notes about running binbinchen
 Fix for newer Grid2OP version(zerofix)
 --------------------------------------
 
-To make the agent work on newer version of grid2op every line
+To make the agent work on newer version of Grid2Op every line
 that says
 
     np.zeros_like(obs.rho)
 
 has to be replaced by
 
-    np.zeros_like(obs.rho, dtype=np.int)
+    np.zeros_like(obs.rho, dtype=int)
 
-This was tested after the fix with `Grid2Op==1.6.3`.
+This was tested after the fix with `Grid2Op==1.9.0`.
+
+Further, this agent was original build for the 2020 challenge, however, should now work for all 
+Gri2Op environments. 
 
 Teacher
 -------

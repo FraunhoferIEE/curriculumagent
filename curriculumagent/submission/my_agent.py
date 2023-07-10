@@ -1,157 +1,369 @@
-"""
-This is the original agent of the EI Innovation Lab, Huawei Cloud, Huawei Technologies
+""" This file is the advanced agent constisting of a model that can cover different action spaces, rllib
+training, scaling and other additional features.
 
-Credit: The methods are the slightly changed methods of the original code, see
-@https://github.com/AsprinChina/L2RPN_NIPS_2020_a_PPO_Solution
+To submit your own agent, just specify the model and action_space_path and if you want a scaler that
+you previously trained with. The MyAgent will import the model and then act in the specific environment.
+
 """
 
+import logging
 import os
-import datetime
+from pathlib import Path
+from typing import Optional, Union, List
+
+import grid2op
 import numpy as np
 import tensorflow as tf
-from copy import deepcopy
 from grid2op.Agent import BaseAgent
+from sklearn.base import BaseEstimator
+from tensorflow.keras.models import Model
+from tensorflow.python.training.tracking.tracking import AutoTrackable
+
+try:
+    # Import if the agent is coppied into the submission folder
+    from curriculumagent.common.obs_converter import obs_to_vect
+    from curriculumagent.common.utilities import (
+        find_best_line_to_reconnect,
+        is_legal,
+        split_action_and_return,
+        simulate_action, revert_topo,
+    )
+
+except ImportError:
+    # Import if the agent is copied into the submission folder
+    from .obs_converter import obs_to_vect
+    from .utilities import (
+        find_best_line_to_reconnect,
+        is_legal,
+        split_action_and_return,
+        simulate_action, revert_topo,
+    )
 
 
 class MyAgent(BaseAgent):
-    def __init__(self, action_space, this_directory_path='./'):
-        """Initialize a new agent."""
+    def __init__(
+            self,
+            action_space,
+            model_path: Union[Path, str],
+            action_space_path: Optional[Union[Path, List[Path]]] = None,
+            this_directory_path: Optional[str] = "./",
+            subset: Optional[bool] = False,
+            scaler: Optional[BaseEstimator] = None,
+            best_action_threshold: float = 0.95,
+            topo: Optional[bool] = False,
+            check_overload: Optional[bool] = False,
+            max_action_sim: Optional[int] = 50
+    ):
+        """The new advanced agent.
+
+        In contrast to the original agent, this agent enables the implementation of tuple and triple actions,
+        as well as use either a keras model or a model from rllib which is a AutoTrackable model.
+
+        Next to the difference in the models and actions, this agent also has the ability to transform the
+        observations based on a provided scaler and/or filter them accordingly.
+
+        Note:
+            If you just want to pass this agent as submission without the CurriculumAgent, copy the content
+            of the common dir into this directory. Further, add the model and actions to complete it.
+
+        Args:
+            action_space: Action Space of the Grid2Op Enviornment
+            model_path: Path where to find the rllib model or Keras model
+            action_space_path: path, where to find the action sets. This is required to run the agent
+            this_directory_path: Path of the submission directory
+            subset: Boolean, whether to filter the observation
+            scaler: Optional Scaler for the neural network
+            best_action_threshold: Threshold, when to stop searching for the results.
+            topo: Booling indicator, whether the agent should revert to original topology if it is possible
+            check_overload: Boolean, whether to simulate a stress of the generation and load
+            max_action_sim: Define, how many of the actions you want to evaluate before selecting a suitable
+            candidate. If you want to select all, it has to be the number of actions. For a more rapid simulation, you
+            can just select fewer values.
+        """
+        # Initialize a new agent.
         BaseAgent.__init__(self, action_space=action_space)
-        self.actions62 = np.load(os.path.join(this_directory_path, 'actions62.npy'))
-        self.actions146 = np.load(os.path.join(this_directory_path, 'actions146.npy'))
-        self.actions = np.concatenate((self.actions62, self.actions146), axis=0)
-        self.actions1255 = np.load(os.path.join(this_directory_path, 'actions1255.npy'))
-        chosen = list(range(2, 7)) + list(range(7, 73)) + list(range(73, 184)) + list(range(184, 656))
-        chosen += list(range(656, 715)) + list(range(715, 774)) + list(range(774, 833)) + list(range(833, 1010))
-        chosen += list(range(1010, 1069)) + list(range(1069, 1105)) + list(range(1105, 1164)) + list(range(1164, 1223))
-        self.chosen = chosen
-        self.ppo = tf.keras.models.load_model(os.path.join(this_directory_path, './ppo-ckpt'))
-        self.last_step = datetime.datetime.now()
+
+        # Collect action set:
+        self.actions = self.__collect_action(
+            this_directory_path=this_directory_path, action_space_path=action_space_path
+        )
+
+        self.subset = subset
+        self.check_overload = check_overload
+
+        # Load Model:
+        try:
+            # Could both be Junior or Senior model
+            self.model: Model = tf.keras.models.load_model(model_path, compile=False)
+            self.model.compile()
+
+        except (IndexError, AttributeError):
+            # Loader of older model:
+            self.model: AutoTrackable = tf.saved_model.load(str(model_path))
+
+        self.scaler = scaler
         self.recovery_stack = []
         self.overflow_steps = 0
+        self.next_actions = None
+        self.best_action_threshold = best_action_threshold
+        self.max_action_sim = max_action_sim
+        if topo:
+            self.topo = topo
+        else:
+            self.topo = False
 
-    def find_best_line_to_reconnect(self, obs, original_action):
-        disconnected_lines = np.where(obs.line_status == False)[0]
-        if not len(disconnected_lines):
-            return original_action
-        if (obs.time_before_cooldown_line[disconnected_lines] > 0).all():
-            return original_action
-        o, _, _, _ = obs.simulate(original_action)
-        min_rho = o.rho.max()
-        line_to_reconnect = -1
-        for line in disconnected_lines:
-            if not obs.time_before_cooldown_line[line]:
-                reconnect_array = np.zeros_like(obs.rho, dtype=np.int)
-                reconnect_array[line] = 1
-                reconnect_action = deepcopy(original_action)
-                reconnect_action.update({'set_line_status': reconnect_array})
-                if not self.is_legal(reconnect_action, obs):
-                    continue
-                o, _, _, _ = obs.simulate(reconnect_action)
-                if o.rho.max() < min_rho:
-                    line_to_reconnect = line
-                    min_rho = o.rho.max()
-        if line_to_reconnect != -1:
-            reconnect_array = np.zeros_like(obs.rho, dtype=np.int)
-            reconnect_array[line_to_reconnect] = 1
-            original_action.update({'set_line_status': reconnect_array})
-        return original_action
+    def act(
+            self, observation: grid2op.Observation.BaseObservation, reward: float, done: bool
+    ) -> grid2op.Action.BaseAction:
+        """Method of the agent to act.
 
-    def array2action(self, array):
-        action = self.action_space({'change_bus': array[236:413]})
-        action._change_bus_vect = action._change_bus_vect.astype(bool)
-        return action
+        When the function selects a tuple action or triple action, the next steps are predetermined as
+        well,i.e., all actions are returned sequentially.
 
-    def is_legal(self, action, obs):
-        adict = action.as_dict()
-        if 'change_bus_vect' not in adict:
-            return True
-        substation_to_operate = int(adict['change_bus_vect']['modif_subs_id'][0])
-        if obs.time_before_cooldown_sub[substation_to_operate]:
-            return False
-        for line in [eval(key) for key, val in adict['change_bus_vect'][str(substation_to_operate)].items()
-                     if 'line' in val['type']]:
-            if obs.time_before_cooldown_line[line] or not obs.line_status[line]:
-                return False
-        return True
+        Args:
+            observation: Grid2Op Observation
+            reward: Reward of the previous action
+            done: Whether the agent is done
 
-    def act(self, observation, reward, done):
-        tnow = observation.get_time_stamp()
-        if self.last_step + datetime.timedelta(minutes=5) != tnow:
-            print('\n\nscenario changes！')
-            self.recovery_stack = []
-        self.last_step = tnow
+        Returns: A suitable Grid2Op action
+
+        """
+
+        # Similar to the Tutor, we check whether there is some remaining action, based on previous
+        # selected tuples
+        if self.next_actions is not None:
+            # Try to do a step:
+            try:
+                next_action = next(self.next_actions)
+                next_action = find_best_line_to_reconnect(obs=observation, original_action=next_action)
+                if is_legal(next_action, observation):
+                    return next_action
+            except StopIteration:
+                self.next_actions = None
 
         if observation.rho.max() >= 1:
             self.overflow_steps += 1
         else:
             self.overflow_steps = 0
 
-        # case: secure
-        threshold_this_step = 0.999
-        if observation.rho.max() < threshold_this_step:  # fixed threshold
-            if (self.recovery_stack == []) or (not self.is_legal(self.array2action(self.actions1255[self.recovery_stack[0]]), observation)):
-                a = self.action_space({})
+        # case: secure with low threshold
+        if observation.rho.max() < self.best_action_threshold:  # fixed threshold
+            if self.topo:
+                action_array = revert_topo(self.action_space, observation)
+                default_action = self.action_space.from_vect(action_array)
+                default_action = find_best_line_to_reconnect(obs=observation,
+                                                             original_action=default_action)
             else:
-                o, r, d, i = observation.simulate(self.array2action(self.actions1255[self.recovery_stack[0]]))
-                if (not d) and (o.rho.max() < 0.98):
-                    aid = self.recovery_stack.pop(0)
-                    a = self.array2action(self.actions1255[aid])
-                else:
-                    a = self.action_space({})
-            return self.find_best_line_to_reconnect(observation, a)
+                default_action = self.action_space({})
+                default_action = find_best_line_to_reconnect(obs=observation,
+                                                             original_action=default_action)
 
-        # case: dangerous
-        o, _, d, _ = observation.simulate(self.action_space({}))
-        min_rho = o.rho.max() if not d else 10
-        print('%s, heavy load, line-%d load is %.2f' % (str(observation.get_time_stamp()), observation.rho.argmax(), observation.rho.max()))
+            return default_action
 
-        action_chosen = None
+        # Now, case dangerous:
+        min_rho = observation.rho.max()
+
+        logging.info(
+            f"{observation.get_time_stamp()}s, heavy load,"
+            f" line-{observation.rho.argmax()}d load is {observation.rho.max()}"
+        )
+
         idx_chosen = None
-        features = np.concatenate(([0], observation.to_vect()))[None, self.chosen]
-        _, a_pred, _ = self.ppo.predict_step(features)
-        a_pred = a_pred._numpy()
-        sorted_actions = a_pred[0, :].argsort()[::-1]
+
+        sorted_actions = self.__get_actions(obs=observation)[:self.max_action_sim]
+
         for k, idx in enumerate(sorted_actions):
-            if idx in [3, 39]:
+            action_vect = self.actions[idx, :]
+            rho_max, valid_action = simulate_action(action_space=self.action_space, obs=observation,
+                                                    action_vect=action_vect, check_overload=self.check_overload
+                                                    )
+            if not valid_action:
                 continue
-            a = self.array2action(self.actions[idx, :])
-            if not self.is_legal(a, observation):
-                continue
-            obs, _, done, _ = observation.simulate(a)
-            if done:
-                continue
-            if obs.rho.max() <= 0.95:
-                print('take action %d, max-rho to %.2f, simulation times: %d' % (idx, obs.rho.max(), k + 1))
-                return self.find_best_line_to_reconnect(observation, a)
-            if obs.rho.max() < min_rho:
-                min_rho = obs.rho.max()
-                action_chosen = a
+
+            if rho_max <= self.best_action_threshold:
+                # For a very suitable candidate, we break the loop
+                logging.info(f"take action {idx}, max-rho to {rho_max}," f" simulation times: {k + 1}")
+                idx_chosen = idx
+                break
+
+            if rho_max < min_rho:
+                # If we have a decrease in rho, we already save the candidate.
+                min_rho = rho_max
                 idx_chosen = idx
 
-        if (min_rho < 0.98) or (self.overflow_steps < 2):
-            print('take action %s, max rho to %.2f, simulation times: 208' % (idx_chosen, min_rho))
-            return self.find_best_line_to_reconnect(observation, action_chosen) if action_chosen else self.find_best_line_to_reconnect(observation, self.action_space({}))
+        if idx_chosen:
+            self.next_actions = split_action_and_return(observation, self.action_space, self.actions[idx_chosen, :])
+            next_action = next(self.next_actions)
+            next_action = find_best_line_to_reconnect(obs=observation, original_action=next_action)
 
-        # second-round search with mild effect
-        id_second_search = None
-        min_rho0 = min_rho
-        for idx, action_array in enumerate(self.actions1255):
-            a = self.array2action(action_array)
-            if not self.is_legal(a, observation):
-                continue
-            obs, _, done, _ = observation.simulate(a)
-            if done:
-                continue
-            if obs.rho.max() < min(min_rho, min_rho0 - 0.03):
-                min_rho = obs.rho.max()
-                action_chosen = a
-                id_second_search = idx
-        if id_second_search:
-            self.recovery_stack.append(id_second_search)
-        return self.find_best_line_to_reconnect(observation, action_chosen) if action_chosen else self.find_best_line_to_reconnect(observation, self.action_space({}))
+        else:
+            next_action = find_best_line_to_reconnect(obs=observation, original_action=self.action_space({}))
+        return next_action
+
+    def reset(self, obs: grid2op.Observation.BaseObservation):
+        """ Resetting the agent.
+
+        Args:
+            obs:
+
+        Returns:
+
+        """
+        self.next_actions = None
+
+    def __collect_action(self, this_directory_path: str, action_space_path: Union[Path, List[Path]]) -> np.ndarray:
+        """Check the action space path for the different action set.
+
+        Args:
+            this_directory_path: Directory of the submission files
+            action_space_path: Optional action space path
+
+        Returns:
+
+        """
+        actions = None
+        if isinstance(action_space_path, Path):
+            if action_space_path.is_file():
+                logging.info(f"Action_space_path {action_space_path} is a file and will be loaded.")
+                actions = np.load(str(action_space_path))
+            elif action_space_path.is_dir():
+                logging.info(
+                    f"Action_space_path {action_space_path} is a path. All available action files "
+                    f" will be loaded."
+                )
+                all_action_files = [
+                    act for act in os.listdir(action_space_path) if "actions" in act and ".npy" in act
+                ]
+
+                if not all_action_files:
+                    raise FileNotFoundError("No actions files were found!")
+
+                loaded_files = []
+                for act in all_action_files:
+                    if "actions" in act and ".npy" in act:
+                        loaded_files.append(np.load(action_space_path / act))
+
+                actions = np.concatenate(loaded_files, axis=0)
+
+        elif isinstance(action_space_path, list):
+            logging.info(f"Action_space_path {action_space_path} is a list containing multiple actions.")
+            for act_path in action_space_path:
+                if isinstance(act_path, Path):
+                    assert act_path.is_file()
+                else:
+                    os.path.isfile(act_path)
+            loaded_files = [np.load(str(act_path)) for act_path in action_space_path]
+            actions = np.concatenate(loaded_files, axis=0)
+        else:
+            raise ValueError(
+                f"The action_space_path variable {action_space_path} does neither consist of a single "
+                f"action nor of a path where actions can be found."
+            )
+
+        return actions
+
+    def __get_actions(self, obs: grid2op.Observation.BaseObservation):
+        """ This method conducts depending on the underlying model the action method
+
+        Args:
+            obs: Input of the Grid2op Environment
+
+        Returns: action
+
+        """
+
+        if isinstance(self.model, Model):
+            # Newer Junior or Senior model
+            sorted_actions = self.__get_keras_actions_model(obs=obs)
+        else:
+            # Older Model from Ray<2.4
+            sorted_actions = self.__get_tf_actions(obs=obs)
+        return sorted_actions
+
+    def __get_keras_actions_model(self, obs: grid2op.Observation.BaseObservation):
+        """Method to get the keras actions:
+
+        Args:
+            obs: Current observations
+
+        Returns: numpy with the sorted actions:
+
+        """
+        # Select subset if wanted
+        if isinstance(self.subset, list):
+            model_input = obs.to_vect()[self.subset]
+        elif self.subset:
+            model_input = obs_to_vect(obs, False)
+        else:
+            model_input = obs.to_vect()
+
+        if self.scaler:
+            model_input = self.scaler.transform(model_input.reshape(1, -1))
+
+        model_input = model_input.reshape((1, -1))
+
+        if isinstance(self.model, tf.keras.models.Sequential):
+            # Junior Model: Sequential model
+            action_probability = self.model.predict(model_input)
+        else:
+            # Senior Model: tensorflow functional model:
+            action_probability_pre_softmax, _ = self.model.predict(model_input)
+            action_probability = tf.nn.softmax(action_probability_pre_softmax).numpy().reshape(-1)
+        sorted_actions = action_probability.argsort()[::-1]
+        return sorted_actions.reshape(-1)
+
+    def __get_tf_actions(self, obs: grid2op.Observation.BaseObservation):
+        """Method to get the tf actions:
+
+        Args:
+            obs: Current observations
+
+        Returns: sorted numpy array with actions
+
+        """
+        # Select subset if wanted
+        if isinstance(self.subset, list):
+            model_input = obs.to_vect()[self.subset]
+        elif self.subset:
+            model_input = obs_to_vect(obs, False)
+        else:
+            model_input = obs.to_vect()
+
+        if self.scaler:
+            model_input = self.scaler.transform(model_input.reshape(1, -1)).reshape(
+                -1,
+            )
+
+        f = self.model.signatures["serving_default"]
+        out = f(
+            observations=tf.convert_to_tensor(model_input.reshape(1, -1)),
+            timestep=tf.convert_to_tensor(0, dtype=tf.int64),
+            is_training=tf.convert_to_tensor(False),
+        )
+
+        # Collect the softmax over all actions
+        try:
+            prob_of_action = (
+                tf.nn.softmax(out["action_dist_inputs"])
+                .numpy()
+                .reshape(
+                    -1,
+                )
+            )
+        except AttributeError:
+            poa = tf.nn.softmax(out["action_dist_inputs"])
+            prob_of_action = poa.eval(session=tf.compat.v1.Session()).reshape(-1, )
+
+        sorted_actions = prob_of_action.argsort()[::-1]
+        return sorted_actions
 
 
 def make_agent(env, this_directory_path):
-    my_agent = MyAgent(env.action_space, this_directory_path)
+    my_agent = MyAgent(
+        action_space=env.action_space,
+        model_path=Path(this_directory_path) / "model",
+        this_directory_path=Path(this_directory_path),
+        action_space_path=Path(this_directory_path) / "actions",
+        subset=True,
+    )
     return my_agent

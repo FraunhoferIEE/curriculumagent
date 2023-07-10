@@ -3,17 +3,20 @@
 Teacher
 =======
 
-The *Teacher* agent is the first in the pipeline of the project.
+The *Teacher* agent is the first agent in the pipeline of the project. The Goal of the agent is to
+test various topology actions and find suiting actions that stabilize the grid.
 
-One major problem of tackling automatic control of large power networks is the vast amount of actions the agent can take.
-The following picture shows the layout or graph of the power network that is to be controlled by the final agent:
+One major problem of tackling automatic control of large power networks is the vast amount of topology actions.
+Since it is infeasible to simulate the impact of each of those actions at runtime of the final agent we need to create
+a set of reduced actions that are most valuable for the later agents.
+
+As example, you can look at the grid of the NeurIPS 2020 Challenge. Even though the graph is still quite
+comprehensible, the number of topology actions are here already around 70,000 actions. Thus, it is
+definitely important to only look at the most important ones.
+
 
 .. figure:: /_static/l2rpn_neurips_2020_track1_layout.png
     :alt: The network layout of the neurips 2020 challenge.
-
-In total there are about 70,000 actions the agent can take to change the topology of the network.
-Since it is infeasible to simulate the impact of each of those actions at runtime of the final agent we need to create
-a set of reduced actions that are most valuable for the later agents.
 
 Teacher Implementations
 -----------------------
@@ -45,6 +48,28 @@ It executes through the given environment and waits until an overload occurs. Wh
 greedy search the upper does, saving any actions that could resolve the overflow and reducing the load of the network.
 
 
+N-1 search
+^^^^^^^^^^
+
+In order to collect actions that make the powernet more robust to future overloads a teacher was developed that tries to
+enforce `n+1 redundany <https://en.wikipedia.org/wiki/N%2B1_redundancy#Applications>`_.
+
+It is implemted in :mod:`~curriculumagent.teacher.teachers.teacher_n_minus_1` with the main algorithm
+being contained in the method :meth:`~curriculumagent.teacher.teachers.teacher_n_minus_1.NMinusOneTeacher.n_minus_one_agent`.
+
+To do that it not only considers overloads but also actively tries to disconnect relevant lines during normal operation to then
+find actions that restore the network to a good state.
+
+Tuple and triple search
+^^^^^^^^^^^^^^^^^^^^^^^
+
+In order to not only act on a single substation a teacher was implemented which tries to combine single/unitary
+actions to tuple and triple actions. Those are implemented in the :mod:`~curriculumagent.teacher.teachers.tuple_triple_teacher` module.
+
+They rely on previously generated actionspaces by the other unitary teachers and try to find new actions by
+randomly sampling other unitary actions of different substations. Note that this teacher is still experimental
+
+
 Usage Example
 -------------
 
@@ -64,6 +89,6 @@ It equates to calling the python function similarly::
 The teacher processes will usually run indefinitely or when the number of specified episodes is reached.
 
 After you have generated experience files with one or more teachers, you can use the functions
-:py:func:`collect_teacher_experience.make_unitary_actionspace`
+:py:func:`collect_teacher_experience.make_unitary_actionspace` or :py:func:`collect_teacher_experience.make_tuple_actionspace`
 to convert those files to a reduced action space which can then be used by the :doc:`tutor`.
 

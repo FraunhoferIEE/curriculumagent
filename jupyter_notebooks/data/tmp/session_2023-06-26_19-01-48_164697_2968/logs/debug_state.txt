@@ -1,0 +1,162 @@
+NodeManager:
+Node ID: 6d9bb5bf4f7d2b91dd5326c3602180f9fa00566608badc69355b99df
+Node name: 127.0.0.1
+InitialConfigResources: {memory: 97494810630000, node:127.0.0.1: 10000, object_store_memory: 48747405310000, CPU: 30000}
+ClusterTaskManager:
+========== Node: 6d9bb5bf4f7d2b91dd5326c3602180f9fa00566608badc69355b99df =================
+Infeasible queue length: 0
+Schedule queue length: 0
+Dispatch queue length: 0
+num_waiting_for_resource: 0
+num_waiting_for_plasma_memory: 0
+num_waiting_for_remote_node_resources: 0
+num_worker_not_started_by_job_config_not_exist: 0
+num_worker_not_started_by_registration_timeout: 0
+num_tasks_waiting_for_workers: 0
+num_cancelled_tasks: 0
+cluster_resource_scheduler state: 
+Local id: 2026574091577027381 Local resources: {CPU: [30000]/[30000], memory: [97494810630000]/[97494810630000], node:127.0.0.1: [10000]/[10000], object_store_memory: [48747405310000]/[48747405310000]}node id: 2026574091577027381{object_store_memory: 48747405310000/48747405310000, node:127.0.0.1: 10000/10000, memory: 97494810630000/97494810630000, CPU: 30000/30000}{ "placment group locations": [], "node to bundles": []}
+Waiting tasks size: 0
+Number of executing tasks: 0
+Number of pinned task arguments: 0
+Number of total spilled tasks: 0
+Number of spilled waiting tasks: 0
+Number of spilled unschedulable tasks: 0
+Resource usage {
+}
+Running tasks by scheduling class:
+==================================================
+
+ClusterResources:
+LocalObjectManager:
+- num pinned objects: 0
+- pinned objects size: 0
+- num objects pending restore: 0
+- num objects pending spill: 0
+- num bytes pending spill: 0
+- num bytes currently spilled: 0
+- cumulative spill requests: 0
+- cumulative restore requests: 0
+- spilled objects pending delete: 0
+
+ObjectManager:
+- num local objects: 0
+- num unfulfilled push requests: 0
+- num object pull requests: 0
+- num chunks received total: 0
+- num chunks received failed (all): 0
+- num chunks received failed / cancelled: 0
+- num chunks received failed / plasma error: 0
+Event stats:
+Global stats: 0 total (0 active)
+Queueing time: mean = -nan(ind) s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+Execution time:  mean = -nan(ind) s, total = 0.000 s
+Event stats:
+PushManager:
+- num pushes in flight: 0
+- num chunks in flight: 0
+- num chunks remaining: 0
+- max chunks allowed: 409
+OwnershipBasedObjectDirectory:
+- num listeners: 0
+- cumulative location updates: 140716796588644
+- num location updates per second: 0.000
+- num location lookups per second: 0.000
+- num locations added per second: 0.000
+- num locations removed per second: 0.000
+BufferPool:
+- create buffer state map size: 0
+PullManager:
+- num bytes available for pulled objects: 4874740531
+- num bytes being pulled (all): 0
+- num bytes being pulled / pinned: 0
+- get request bundles: BundlePullRequestQueue{0 total, 0 active, 0 inactive, 0 unpullable}
+- wait request bundles: BundlePullRequestQueue{0 total, 0 active, 0 inactive, 0 unpullable}
+- task request bundles: BundlePullRequestQueue{0 total, 0 active, 0 inactive, 0 unpullable}
+- first get request bundle: N/A
+- first wait request bundle: N/A
+- first task request bundle: N/A
+- num objects queued: 0
+- num objects actively pulled (all): 0
+- num objects actively pulled / pinned: 0
+- num bundles being pulled: 0
+- num pull retries: 0
+- max timeout seconds: 0
+- max timeout request is already processed. No entry.
+
+WorkerPool:
+- registered jobs: 1
+- process_failed_job_config_missing: 0
+- process_failed_rate_limited: 0
+- process_failed_pending_registration: 0
+- process_failed_runtime_env_setup_failed: 0
+- num PYTHON workers: 3
+- num PYTHON drivers: 1
+- num object spill callbacks queued: 0
+- num object restore queued: 0
+- num util functions queued: 0
+- num idle workers: 3
+TaskDependencyManager:
+- task deps map size: 0
+- get req map size: 0
+- wait req map size: 0
+- local objects map size: 0
+WaitManager:
+- num active wait requests: 0
+Subscriber:
+Channel WORKER_OBJECT_LOCATIONS_CHANNEL
+- cumulative subscribe requests: 0
+- cumulative unsubscribe requests: 0
+- active subscribed publishers: 0
+- cumulative published messages: 0
+- cumulative processed messages: 0
+Channel WORKER_REF_REMOVED_CHANNEL
+- cumulative subscribe requests: 0
+- cumulative unsubscribe requests: 0
+- active subscribed publishers: 0
+- cumulative published messages: 0
+- cumulative processed messages: 0
+Channel WORKER_OBJECT_EVICTION
+- cumulative subscribe requests: 0
+- cumulative unsubscribe requests: 0
+- active subscribed publishers: 0
+- cumulative published messages: 0
+- cumulative processed messages: 0
+num async plasma notifications: 0
+Remote node managers: 
+Event stats:
+Global stats: 462 total (17 active)
+Queueing time: mean = 14.612 ms, max = 4.203 s, min = 400.000 ns, total = 6.751 s
+Execution time:  mean = 401.755 us, total = 185.611 ms
+Event stats:
+	UNKNOWN - 107 total (4 active), CPU time: mean = 19.618 us, total = 2.099 ms
+	ObjectManager.UpdateAvailableMemory - 92 total (0 active), CPU time: mean = 5.193 us, total = 477.779 us
+	NodeManager.CheckGC - 92 total (1 active), CPU time: mean = 4.223 us, total = 388.542 us
+	RayletWorkerPool.deadline_timer.kill_idle_workers - 49 total (1 active), CPU time: mean = 29.348 us, total = 1.438 ms
+	ClientConnection.async_read.ReadBufferAsync - 28 total (4 active), CPU time: mean = 3.443 ms, total = 96.403 ms
+	NodeManagerService.grpc_server.ReportWorkerBacklog - 24 total (0 active), CPU time: mean = 33.978 us, total = 815.479 us
+	PeriodicalRunner.RunFnPeriodically - 11 total (0 active), CPU time: mean = 597.209 us, total = 6.569 ms
+	NodeManager.deadline_timer.flush_free_objects - 10 total (1 active), CPU time: mean = 11.469 us, total = 114.690 us
+	NodeManagerService.grpc_server.GetResourceLoad - 10 total (1 active), CPU time: mean = 68.690 us, total = 686.901 us
+	ClientConnection.async_write.DoAsyncWrites - 4 total (0 active), CPU time: mean = 2.506 us, total = 10.025 us
+	ObjectManager.ObjectDeleted - 4 total (0 active), CPU time: mean = 35.366 us, total = 141.463 us
+	ObjectManager.ObjectAdded - 4 total (0 active), CPU time: mean = 23.726 us, total = 94.905 us
+	NodeManagerService.grpc_server.GetSystemConfig - 4 total (0 active), CPU time: mean = 126.751 us, total = 507.005 us
+	RaySyncerRegister - 2 total (0 active), CPU time: mean = 6.350 us, total = 12.700 us
+	NodeManager.GcsCheckAlive - 2 total (1 active), CPU time: mean = 124.306 us, total = 248.612 us
+	InternalPubSubGcsService.grpc_client.GcsSubscriberCommandBatch - 2 total (0 active), CPU time: mean = 160.300 us, total = 320.600 us
+	NodeInfoGcsService.grpc_client.CheckAlive - 2 total (0 active), CPU time: mean = 30.183 us, total = 60.365 us
+	NodeManager.deadline_timer.record_metrics - 2 total (1 active), CPU time: mean = 419.452 us, total = 838.904 us
+	InternalPubSubGcsService.grpc_client.GcsSubscriberPoll - 2 total (1 active), CPU time: mean = 174.190 us, total = 348.381 us
+	NodeManager.deadline_timer.print_event_loop_stats - 1 total (1 active), CPU time: mean = 0.000 s, total = 0.000 s
+	 - 1 total (0 active), CPU time: mean = 500.000 ns, total = 500.000 ns
+	Subscriber.HandlePublishedMessage_GCS_JOB_CHANNEL - 1 total (0 active), CPU time: mean = 971.789 us, total = 971.789 us
+	NodeInfoGcsService.grpc_client.GetAllNodeInfo - 1 total (0 active), CPU time: mean = 550.400 us, total = 550.400 us
+	NodeManager.deadline_timer.debug_state_dump - 1 total (1 active, 1 running), CPU time: mean = 0.000 s, total = 0.000 s
+	NodeInfoGcsService.grpc_client.GetInternalConfig - 1 total (0 active), CPU time: mean = 70.414 ms, total = 70.414 ms
+	JobInfoGcsService.grpc_client.GetAllJobInfo - 1 total (0 active), CPU time: mean = 20.800 us, total = 20.800 us
+	AgentManagerService.grpc_server.RegisterAgent - 1 total (0 active), CPU time: mean = 991.036 us, total = 991.036 us
+	RaySyncer.BroadcastMessage - 1 total (0 active), CPU time: mean = 38.100 us, total = 38.100 us
+	JobInfoGcsService.grpc_client.AddJob - 1 total (0 active), CPU time: mean = 235.212 us, total = 235.212 us
+	NodeInfoGcsService.grpc_client.RegisterNode - 1 total (0 active), CPU time: mean = 812.800 us, total = 812.800 us
+DebugString() time ms: 0

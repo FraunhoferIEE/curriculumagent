@@ -1,151 +1,255 @@
-"""
-This file consists of the method to train the original senior approach.
-
-Credit: The methods are the enhanced methods of the original code, see
-@https://github.com/AsprinChina/L2RPN_NIPS_2020_a_PPO_Solution
-"""
-
-
-import re
-import time
+import json
+import logging
+import os
+import pickle
+import random
 from pathlib import Path
+from typing import Union, List, Optional
+
+import ray
 import tensorflow as tf
-from multiprocessing import cpu_count
-import numpy as np
-import grid2op
-from grid2op.Environment import SingleEnvMultiProcess
-from curriculumagent.senior.openai_execution.ppo import PPO, PVNet
-from curriculumagent.senior.openai_execution.ppo_environment import Run_env
-from curriculumagent.senior.openai_execution.ppo_reward import PPO_Reward
+from ray._raylet import ObjectRef
+from ray.rllib.algorithms.ppo import PPOConfig
+from ray.rllib.models import ModelCatalog
+from ray.rllib.utils import check_env
+from sklearn.base import BaseEstimator
 
-def train_senior(run_name: str, env_path: Path, action_threshold: float = 0.9, epochs: int = 1000,
-                 env_steps_per_epoch: int = 1_000):
-    """ Major method to train the Senior student.
+from curriculumagent.senior.rllib_execution.senior_env_rllib import SeniorEnvRllib
+from curriculumagent.senior.rllib_execution.senior_model_rllib import Grid2OpCustomModel
+from curriculumagent.submission.my_agent import MyAgent
 
-    Within this method, the junior model is loaded and the Senior model is trained based on the
-    number of available cpus. The whole training process is executed on a fixed set of actions and
-    with multiple Grid2Op environments in parallel.
 
-    Note that not all GPU memory gets used from the start but it might grow a bit over time.
+class Senior:
+    """
+    This class is the Senior agent. It is based on the open source framework RLlib and trains with the
+    PPO. The Senior model requires a Junior model and ray to be initialized.
 
-    Args:
-        run_name: name of the experiment
-        env_path: path of the underlying data for the Grid2Op environments
-        action_threshold: Threshold between 0.0 and 1.0, indicating when the dangerous scenario starts.
-            For example: if the threshold is set to 0.9, the agent has to act, when the max rho is larger
-            or equal to 0.9
-        epochs: number of epochs for training.
-        env_steps_per_epoch: number of steps within the environment per epoch. Higher number of steps
-            corresponds to higher computational time
-
-    Returns: Nothing is returned but instead the results and the model is saved in the checkpoint path
-        checkpoint_path = Path(f'./ckpt_{run_name}')
+    Note that you can use this class a parent, if you want to change the default values of the
+    underlying rllib_environment or the model
 
     """
-    # Don't use all the gpu memory from the beginning but grow it
-    global date
-    physical_devices = tf.config.list_physical_devices('GPU')
-    for gpu_instance in physical_devices:
-        tf.config.experimental.set_memory_growth(gpu_instance, True)
 
-    # hyper-parameters
-    NUM_CORE = cpu_count()
-    print('CPU counts：%d' % NUM_CORE)
+    def __init__(self,
+                 env_path: Union[str, Path],
+                 action_space_path: Union[Path, List[Path]],
+                 model_path: Union[Path, str],
+                 ckpt_save_path: Optional[Union[Path, str]] = None,
+                 scaler: Optional[Union[ObjectRef, BaseEstimator, str]] = None,
+                 custom_junior_config: Optional[dict] = None,
+                 num_workers: Optional[int] = None,
+                 subset: Optional[bool] = False,
+                 env_kwargs: Optional[dict] = {}):
+        """
+        The Senior requires multiple inputs for the initialization.
 
-    print(f'Run name: {run_name}')
-    print(f'Hyper-parameters: cpu_core: {NUM_CORE}, env_path: {env_path}, action_threshold: {action_threshold}')
+        After the init is complete, you can train the Senior or restore a checkpoint.
+        Further, we enable a possible check of the underlying environment and model.
 
-    # Build single-process environment
-    try:
-        # if lightsim2grid is available, use it.
-        from lightsim2grid import LightSimBackend
+        Args:
+            env_path: Path to the Grid2Op Environment. This has to be initialized within the methode.
+            action_space_path: Either path to the actions or a list containing mutliple actions.
+            model_path: The required model path loads the underling model for the senior and consist of
+            one of either a Junior model or a Senior model.
+            ckpt_save_path: Optional path, where the PPO should save its checkpoints. If not provided,
+            scaler: If you want, you can pass a Scaler of Sklearn Model.
+            Either a Sklearn Scaler or its ray ID, if the scaler is saved via ray.put().
+            If scaler is provided, the environment will scale the observations based on scaler.transform()
+            custom_junior_config: If the junior model is a model after the hyperparameter training, you
+            need to pass the model configurations.
+            ray will save them in the default directory ray_results.
+            num_workers: You can configure the number of workers, based on your ray.init() configurations.
+            If not specified, the PPO will used half of you CPU count.
+            subset: Optional argument, whether the observations should be filtered when saved.
+            The default version saves the observations according to obs.to_vect(), however if
+            subset is set to True, then only the all observations regarding the lines, busses, generators and loads are
+            selected.
+            env_kwargs: Optional parameters for the Grid2Op environment that should be used when making the environment.
+        """
+        # Set default values:
 
-        backend = LightSimBackend()
-        env = grid2op.make(dataset=str(env_path), backend=backend, reward_class=PPO_Reward)
-    except Exception as e:
-        raise e
-    env.chronics_handler.shuffle(shuffler=lambda x: x[np.random.choice(len(x), size=len(x), replace=False)])
-    # Convert to multi-process environment
-    envs = SingleEnvMultiProcess(env=env, nb_env=NUM_CORE)
-    envs.reset()
+        self.ckpt_save_path = ckpt_save_path
+        assert ray.is_initialized(), "Ray seems not to be initialized. Please use ray.init() prior to running" \
+                                     "the Senior."
 
-    # Build PPO agent
-    agent = PPO(coef_entropy=1e-3, coef_value_func=0.01)
+        if isinstance(scaler, (str,Path)):
+            try:
+                with open(scaler, "rb") as fp:  # Pickling
+                    scaler = pickle.load(fp)
+            except Exception as e:
+                scaler = None
+                logging.info(f"The scaler provided was either a path or a string. However, loading "
+                             f"the scaler cause the following exception:{e}"
+                             f"It will be set to None")
 
-    # Build a runner
-    runner = Run_env(envs, agent, num_core=NUM_CORE, action_threshold=action_threshold,
-                     action_space_path='../action_space')
-    # Try to load latest checkpoint if possible
-    checkpoint_path = Path(f'./ckpt_{run_name}')
-    print(f'Trying to load latest checkpoint from {checkpoint_path}')
-    try:
-        dir_pat = re.compile('([0-9]*)--?([0-9.]*)')
-        checkpoint_dirs = [f for f in checkpoint_path.iterdir() if f.is_dir() and dir_pat.match(f.name)]
+        self.env_config = {
+            "action_space_path": action_space_path,
+            "env_path": env_path,
+            "action_threshold": 0.95,
+            'subset': subset,
+            'scaler': scaler,
+            'topo': True,
+            "env_kwargs": env_kwargs}
 
-        # Parse directory names to figure out latest epoch checkpoint
-        parsed_dirs = []
-        for cd in checkpoint_dirs:
-            epoch, reward = dir_pat.match(cd.name).groups()
-            parsed_dirs.append((epoch, cd))
-        sorted_dirs = sorted(parsed_dirs, key=lambda r: r[0])
+        self.model_config = None
 
-        start_epoch, latest_checkpoint_dir = sorted_dirs[-1]
-        start_epoch = int(start_epoch) + 1
-        print(f"Latest checkpoint directory is: {latest_checkpoint_dir}")
-        runner.agent.model.model = tf.keras.models.load_model(
-            latest_checkpoint_dir, custom_objects={"PVNet": PVNet}
+        if isinstance(custom_junior_config, (dict, str)):
+            if isinstance(custom_junior_config, str):
+                with open(custom_junior_config) as json_file:
+                    custom_junior_config = json.load(json_file)
+
+            ModelCatalog.register_custom_model('Senior', Grid2OpCustomModel)
+            self.model_config = {"model_path": model_path,
+                                 "custom_config": custom_junior_config}
+            self.__advanced_model = True
+        else:
+            ModelCatalog.register_custom_model('Senior', Grid2OpCustomModel)
+            self.model_config = {"model_path": model_path}
+            self.__advanced_model = False
+
+        # Testing of model and init the SeniorEnvRllib
+        self.rllib_env: SeniorEnvRllib = None
+        self.__test_env_and_model_config()
+
+        # Now init PPO
+        num_cpu = os.cpu_count()
+        if not num_workers:
+            num_workers = num_cpu // 2
+
+        self.ppo_config = (
+            PPOConfig().environment(env=SeniorEnvRllib, env_config=self.env_config)
+            .rollouts(num_rollout_workers=num_workers)
+            .framework("tf2")
+            .training(model={"custom_model": "Senior",
+                             "custom_model_config": self.model_config})
+            .evaluation(evaluation_num_workers=1))
+
+        self.ppo = self.ppo_config.build()
+
+    def train(self, iterations: int = 1) -> dict:
+        """ Train the Senior with the underlying PPO agent.
+
+        Args:
+            iterations: Number of Iterations for the PPO
+
+        Returns: rllib output
+        """
+        out = None
+        for i in range(iterations):
+            out = self.ppo.train()
+
+            # For every 5 steps, we save the current checkpoint:
+            if i % 5 == 0:
+                self.ppo.save(checkpoint_dir=self.ckpt_save_path)
+
+        # Now save final checkpoint
+        save_path = self.ppo.save(checkpoint_dir=self.ckpt_save_path)
+
+        logging.info("An Algorithm checkpoint has been created inside directory: "
+                     f"'{save_path}'.")
+
+        return out
+
+    def restore(self, path: Optional[Union[str, Path]]) -> None:
+        """
+        Restores the provided checkpoint. Alternatively you can also use the Algorithm.from_checkpoint()
+        for this.
+        Args:
+            path: Path to checkpoint.
+
+        Returns: None
+
+        """
+        self.ppo.restore(path)
+        logging.info(f"Restored path: {path} ")
+
+    def save_to_model(self, path: Optional[Union[str, Path]] = "."):
+        """
+        Saving the model for the final Agent. This model is saved as a TensorFlow model and
+        can be loaded by the MyAgent method of the CurriculumAgent.
+
+        Args:
+            path: Path, where to save the model.
+
+        Returns:
+
+        """
+        self.ppo.export_policy_model(path)
+        logging.info(f"The MyAgent model is saved under {path}")
+
+    def get_my_agent(self, path: Optional[Union[str, Path]] = ".") -> MyAgent:
+        """
+        Saves the Senior model and returns the final MyAgent model.
+
+        Returns: MyAgent model with the respective action sets of the Senior
+
+        """
+        # First Save the PPO:
+        self.save_to_model(path)
+
+        # Load the my_agent:
+        agent = MyAgent(
+            action_space=self.rllib_env.single_env.action_space,
+            model_path=path,
+            action_space_path=self.env_config["action_space_path"],
+            scaler=self.env_config["scaler"],
+            best_action_threshold=self.env_config["action_threshold"],
+            topo=self.env_config["topo"],
+            subset=self.env_config["subset"]
         )
-    except Exception as e:
-        print(f'Could not load checkpoint: {e}')
-        start_epoch = 0
+        return agent
 
-    logfile = Path(f"./log/log-{run_name}-{time.strftime('%m-%d-%H-%M', time.localtime())}")
-    logfile.parent.mkdir(exist_ok=True)
-    with open(logfile, 'w') as f:
-        f.writelines('epoch, ave_r, ave_alive, policy_loss, value_loss, entropy, kl, clipped_ratio, time\n')
+    def __test_env_and_model_config(self) -> None:
+        """ This method tests, whether the inputs of the senior are sufficient enough and
+        if everything works. This also means running the rllib method check_env()
 
-    print('start training... ...')
-    for update in range(start_epoch, epochs):
-        # update learning rate
-        lr_now = 6e-5 * np.linspace(1, 0.025, 500)[np.clip(update, 0, 499)]
-        if update < 5:
-            lr_now = 1e-4
-        clip_range_now = 0.2
+        Returns: Nothing. The method should complete or else you have a problem.
+        """
+        # Create the senior_env_rllib:
+        logging.info("Init of SeniorEnvRllib and testing one simple execution")
+        self.rllib_env = SeniorEnvRllib(self.env_config)
 
-        # generate a new batch
-        tick = time.time()
-        obs, returns, dones, actions, values, neg_log_p, ave_r = runner.run_n_steps(env_steps_per_epoch)
-        returns /= 20
-        print('sampling number in this epoch: %d' % obs.shape[0])
+        assert isinstance(self.rllib_env, SeniorEnvRllib), "The initialization of the SeniorEnvRllib failed!"
+        # Run Environment:
+        obs, _ = self.rllib_env.reset()
+        term = False
+        trunc = False
+        while term is False and trunc is False:
+            act = random.randrange(self.rllib_env.action_space.n)
+            _, _, term, trunc, _ = self.rllib_env.step(act)
+        obs, _ = self.rllib_env.reset()
 
-        # update policy-value-network
-        n = obs.shape[0]
-        advs = returns - values
-        advs = (advs - np.mean(advs)) / (np.std(advs) + 1e-8)
-        for _ in range(2):
-            ind = np.arange(n)
-            np.random.shuffle(ind)
-            for batch_id in range(10):
-                slices = (tf.constant(arr[ind[batch_id::10]]) for arr in
-                          (obs, returns, actions, values, neg_log_p, advs))
-                policy_loss, value_loss, entropy, approx_kl, clip_ratio = agent.train(*slices,
-                                                                                      lr=lr_now,
-                                                                                      clip_range=clip_range_now)
+        logging.info("The SeniorEnvRllib environment seems to run. Next, we check ray")
+        check_env(self.rllib_env)
+        logging.info("The SeniorEnvRllib check completed. ")
 
-        # logging
-        print('epoch-%d, policy loss: %5.3f, value loss: %.5f, entropy: %.5f, approximate kl-divergence: %.5g, '
-              'clipped ratio: %.5g' % (update, policy_loss, value_loss, entropy, approx_kl, clip_ratio))
-        print('epoch-%d, ave_r: %5.3f, ave_alive: %5.3f, duration: %5.3f' % (
-            update, ave_r, np.average(runner.alive_steps_record[-1000:]), time.time() - tick))
-        with open(logfile, 'a') as f:
-            f.writelines('%d, %.2f, %.2f, %.3f, %.3f, %.3f, %.3f, %.3f, %.2f\n' % (
-                update, ave_r, np.average(runner.alive_steps_record[-1000:]), policy_loss, value_loss, entropy,
-                approx_kl,
-                clip_ratio, time.time() - tick))
-        runner.agent.model.model.save(checkpoint_path / ('%d-%.2f' % (update, ave_r)))
+        # Now the model
+        logging.info("Analyzing the Model configuration.")
+        # First TF Model
+        logging.info("First loading the TensorFlow model")
+        model = tf.keras.models.load_model(self.model_config["model_path"])
+        model.compile()
+        logging.info("TF Model Import works")
 
+        # Now the RLlib Model:
+        if self.__advanced_model:
+            model = Grid2OpCustomModel(obs_space=self.rllib_env.observation_space,
+                                       action_space=self.rllib_env.action_space,
+                                       num_outputs=self.rllib_env.action_space.n,
+                                       model_config={},
+                                       model_path=self.model_config["model_path"],
+                                       custom_config=self.model_config["custom_config"],
+                                       name="Junior")
+        else:
+            model = Grid2OpCustomModel(obs_space=self.rllib_env.observation_space,
+                                       action_space=self.rllib_env.action_space,
+                                       num_outputs=self.rllib_env.action_space.n,
+                                       model_config={},
+                                       model_path=self.model_config["model_path"],
+                                       name="Junior")
 
-if __name__ == '__main__':
-    import defopt
-
-    defopt.run(train_senior)
+        logging.info("Init of model worked.")
+        # Now Testing
+        obs = {"obs": obs.reshape(1, -1)}
+        assert model.forward(input_dict=obs, state=1, seq_lens=None), "Error, the model was not able to pass values!"
+        logging.info("Model seems to be working")
+        logging.info("All testing completed. ")

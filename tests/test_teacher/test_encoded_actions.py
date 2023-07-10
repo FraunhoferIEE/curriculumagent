@@ -22,8 +22,8 @@ def test_do_nothing_action():
 
     do_nothing = env.action_space()
     encoded = EncodedTopologyAction(do_nothing)
-    assert encoded.data == '0'
+    assert encoded.data == "0"
     assert encoded.to_action(env) == do_nothing
 
     # Another shortcut for encoding the do nothing action
-    assert EncodedTopologyAction(None).data == '0'
+    assert EncodedTopologyAction(None).data == "0"

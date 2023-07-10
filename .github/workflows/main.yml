@@ -1,20 +1,22 @@
 name: CI
 
-on: [ push ]
+on: [push]
+
+env:
+  # Setting an environment variable with the value of a configuration variable
+  env_var: ${{ vars.ENV_CONTEXT_VAR }}
 
 jobs:
-  build:
-
+  pipeline:
     runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
-        with:
-          lfs: true
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -23,11 +25,68 @@ jobs:
       # Run pylint
       - name: Run Pylint for checking of Syntax
         run: |
-          pylint curriculumagent --rcfile=pylintrc --fail-under=8
+           pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest
-      - name: Test with pytest
+  testbaseline:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 1
         run: |
-          pytest --cov-report html:cov_html --cov=curriculumagent tests/
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_baseline -s
+  testcommon:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 2
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_common -s
+  testjunior:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 2
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_junior -s
+  testsenior:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 3
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior -m "not gitlabonly" -s
+  testtutor:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 4
+        run: |
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -s
       - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
@@ -35,24 +94,22 @@ jobs:
           path: cov_html/
           retention-days: 7
         if: ${{ always() }}
-      - name: Build package
+  testteacher:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      # Install python and dependencies:
+      - uses: actions/checkout@v3
+      - name: Test with pytest number 4
         run: |
-          pip install build
-          python -m build --sdist --wheel --outdir dist/ .
-      - name: Archive Build results
+          pip install pytest-cov pytest-benchmark
+          pip install -r requirements-dev.txt
+          pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s -m "not slow"
+      - name: Archive Test results
         uses: actions/upload-artifact@v3
         with:
-          name: Build Files
-          path: dist/
+          name: Test Coverage
+          path: cov_html/
           retention-days: 7
         if: ${{ always() }}
-        # Publishing on Testpipy
-        #uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      - name: Publish package
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN_TEST }}
-          repository_url: https://test.pypi.org/legacy/
-          skip_existing: true

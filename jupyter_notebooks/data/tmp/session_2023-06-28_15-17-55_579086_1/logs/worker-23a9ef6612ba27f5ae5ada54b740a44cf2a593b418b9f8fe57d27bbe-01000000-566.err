@@ -1,0 +1,21 @@
+:job_id:01000000
+2023-06-28 15:18:29.521957: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+:actor_name:RolloutWorker
+numba cannot be imported and numba functions are disabled.
+Probably the execution is slow.
+Please install numba to gain a massive speedup.
+(or if you prefer slow execution, set the flag numba=False to avoid this warning!)
+
+numba cannot be imported and numba functions are disabled.
+Probably the execution is slow.
+Please install numba to gain a massive speedup.
+(or if you prefer slow execution, set the flag numba=False to avoid this warning!)
+
+/usr/local/lib/python3.10/site-packages/lightsim2grid/gridmodel/_aux_add_trafo.py:65: UserWarning: There were some Nan in the pp_net.trafo["tap_step_degree"], they have been replaced by 0
+  warnings.warn("There were some Nan in the pp_net.trafo[\"tap_step_degree\"], they have been replaced by 0")
+/usr/local/lib/python3.10/site-packages/lightsim2grid/gridmodel/_aux_add_slack.py:112: UserWarning: We found either some slack coefficient to be < 0. or they were all 0.We set them all to 1.0 to avoid such issues
+  warnings.warn("We found either some slack coefficient to be < 0. or they were all 0."
+/opt/project/curriculumagent/senior/rllib_execution/senior_model_rllib.py:102: UserWarning: The custom dictionary had not the correct keys. Using default model.
+  warnings.warn("The custom dictionary had not the correct keys. Using default model.")
+/usr/local/lib/python3.10/site-packages/keras/initializers/initializers.py:120: UserWarning: The initializer Orthogonal is unseeded and being called multiple times, which will return identical values each time (even if the initializer is unseeded). Please update your code to provide a seed to the initializer, or avoid using the same initalizer instance more than once.
+  warnings.warn(

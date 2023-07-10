@@ -35,7 +35,6 @@ IMPORT_NAME = 'curriculumagent'  # name used for imports
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # Example configuration for intersphinx: refer to the Python standard library.
-# TODO: link all the other mentioned packages, like .database etc. here.
 intersphinx_mapping = {'https://docs.python.org/': None,
                         'grid2op': ('https://grid2op.readthedocs.io/en/latest/', None),
                         'numpy': ('https://numpy.org/doc/stable/', None),

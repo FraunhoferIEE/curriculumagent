@@ -1,103 +1,115 @@
+"""This file is build to construct the environment of the Senior Agent to run the PPO with ray and rllib.
 """
-This file is build to construct the environment of the Senior Agent to run the PPO with ray and rllib.
-"""
-import os
-from pathlib import Path
 import logging
-from typing import Union, TypedDict, Tuple, List, Optional
-import gym
+import os
+import pickle
+from pathlib import Path
+from typing import Union, TypedDict, Tuple, List, Optional, Dict
+
+import grid2op
+import gymnasium as gym
+import numpy as np
 import ray
 from grid2op.Exceptions import UnknownEnv
-from gym.spaces import Discrete, Box
+from gymnasium.spaces import Discrete, Box
 from lightsim2grid import LightSimBackend
-import numpy as np
-import grid2op
 from ray._raylet import ObjectRef
 from sklearn.base import BaseEstimator
 
-from curriculumagent.senior.openai_execution.ppo_reward import PPO_Reward
-from curriculumagent.common.utilities import find_best_line_to_reconnect, split_and_execute_action
+from curriculumagent.common.obs_converter import obs_to_vect
+from curriculumagent.common.utilities import find_best_line_to_reconnect, split_and_execute_action, revert_topo
+from curriculumagent.senior.rllib_execution.alternative_rewards import PPO_Reward
 
 
 class RLlibEnvConfig(TypedDict):
-    """
-    TypeDict Class with following inputs:
-    action_space_path: Either path to the actions or a list containing mutliple actions.
-    env_path: path of the Grid2Op environment
-    action_threshold: between 0 and 1
-    filtered_obs: Should the obs.to_vect be filtered similar to the original Agent. If True,
-            the obs.to_vect is filted based on predefined values. If False, all values are considered.
-            Alternatively, one can submit the once own values.
-            testing: Indicator, whether the underlying Grid2op Env should be started in testing mode or not
-    scaler: Optional Scaler of Sklearn Model. Either a Sklearn Scaler or its ray ID, if the scaler is saved via
-            ray.put(). If sclaer is provided, the environment will scale the observations based on scaler.transform()
+    """TypeDict Class.
+
+     Attributes:
+        action_space_path: Either path to the actions or a list containing mutliple actions.
+        env_path: Path of the Grid2Op environment
+        action_threshold: Between 0 and 1.
+        subset: Should the obs.to_vect be filtered similar to the original Agent. If True,
+                the obs.to_vect is filtered based on predefined values. If False, all values are considered.
+                Alternatively, one can submit the once own values.
+                testing: Indicator, whether the underlying Grid2op Env should be started in testing mode or not
+        scaler: Optional Scaler of Sklearn Model. Either a Sklearn Scaler or its ray ID, if the scaler is saved via
+                ray.put(). If scaler is provided, the environment will scale the observations based on
+                scaler.transform().
+        env_kwargs: Optional additional arguments for the Grid2Op environment that should be used when making the
+        environment.
+
     """
     action_space_path: Union[Path, List[Path]]
     env_path: Union[str, Path]
     action_threshold: float
     filtered_obs: Union[bool, List]
-    scaler: Optional[Union[ObjectRef,  BaseEstimator]]
+    scaler: Optional[Union[ObjectRef, BaseEstimator, str]]
+    topo: Optional[bool]
+    alternative_rew: Optional[grid2op.Reward.BaseReward]
+    env_kwargs: Optional[dict] = {}
 
 
 class SeniorEnvRllib(gym.Env):
-    """
-    Environment class, in which the Grid2op Backend is combined with the actions of the tutor agent.
+    """Environment class, in which the Grid2Op Backend is combined with the actions of the tutor agent.
     The environment can then be used in the RLlib framework for training.
 
     There is a difference between this environment and the GymEnv of grid2op.gym_compat, because we
     still access the Grid2Op Environment.
 
+    Note: With the Update to Ray>=2.4 the environment is now based on the gymnasium package and
+        not gym anymore. Thus, small changes are necessary.
+
+
     """
 
     def __init__(self, config: RLlibEnvConfig,
                  testing: bool = False):
-        """ Initialization of Environment with Grid2Op
+        """Initialization of Environment with Grid2Op.
 
         If possible, the lightsim2grid backend is used. Further, we define based on the Gym format
-        the environment
-
-
+        the environment.
 
         Args:
             config: RllibEnvConfig File, containing the following keys,value pairs:
                 action_space_path: Either path to the actions or a list containing mutliple actions.
-                env_path: path of the Grid2Op environment
-                action_threshold: between 0 and 1
-                filtered_obs: Should the obs.to_vect be filtered similar to the original Agent. If True,
-                        the obs.to_vect is filtered based on predefined values. If False, all values are considered.
-                        Alternatively, one can submit the once own values.
+                env_path: Path of the Grid2Op environment
+                action_threshold: Threshold between 0 and 1.
+                subset: Should the obs.to_vect be filtered similar to the original Agent. If True,
+                        the obs.to_vect is filtered based on predefined values by the obs_to_vect method.
+                        If False, all values are considered. Alternatively, one can submit the own values.
                         testing: Indicator, whether the underlying Grid2op Env should be started in testing mode or not
-                scaler: Optional Scaler of Sklearn Model. Either a Sklearn Scaler or its ray ID, if the scaler is saved via
+                scaler: Optional Scaler of Sklearn Model. Either a Sklearn Scaler or its ray ID, if the scaler is saved
                         ray.put(). If scaler is provided, the environment will scale the observations based on
-                        scaler.transform()
+                        scaler.transform().
+                alternative_rew: If wanted, you can supply an alternative reward for the grid2op Environment.
 
+        Returns:
+            None.
 
         """
         # Check if subsample of Obs:
-        filtered_obs = config["filtered_obs"]
         action_space_path = config["action_space_path"]
         action_threshold = config["action_threshold"]
 
-        if isinstance(filtered_obs, list):
-            self.chosen = filtered_obs
-        else:
-            if filtered_obs:
-                self.chosen = self.__get_default_chosen()
-            else:
-                self.chosen = []
+        self.subset = config["subset"]
 
         data_path = str(config["env_path"])
+        env_kwargs = config.get("env_kwargs", {})
 
         # Init environments: If testing is true, we test the test flag
         backend = LightSimBackend()
         try:
             if testing:
                 env = grid2op.make(dataset=data_path, backend=backend,
-                                   reward_class=PPO_Reward, test=True)
+                                   reward_class=PPO_Reward, test=True, **env_kwargs)
                 logging.info("Test flag was set to true. Init Env in testing mode.")
             else:
-                env = grid2op.make(dataset=data_path, backend=backend,
-                                   reward_class=PPO_Reward, test=False)
+                if "alternative_rew" in config.keys():
+                    env = grid2op.make(dataset=data_path, backend=backend,
+                                       reward_class=config["alternative_rew"], test=False, **env_kwargs)
+                else:
+                    env = grid2op.make(dataset=data_path, backend=backend,
+                                       reward_class=PPO_Reward, test=False, **env_kwargs)
                 logging.info("Init of Grid2Op Env works.")
             self.single_env = env.copy()
         except UnknownEnv as test_env:
@@ -137,19 +149,25 @@ class SeniorEnvRllib(gym.Env):
         # Define Action and Observation Space in Gym Format:
         self.action_space = Discrete(len(self.actions))
 
-        if self.chosen:
-            self.observation_space = Box(shape=(len(self.chosen),), high=np.inf, low=-np.inf)
+        if isinstance(self.subset, list):
+            vect_shape = len(self.subset)
+        elif self.subset:
+            vect_shape = obs_to_vect(self.single_env.get_obs(), False).shape[0]
         else:
-            self.observation_space = Box(shape=(self.single_env.observation_space.size(),), high=np.inf, low=-np.inf)
+            vect_shape = self.single_env.observation_space.size()
+        self.observation_space = Box(shape=(vect_shape,), high=np.inf, low=-np.inf)
 
         logging.info(f"Initialize Environment with the following action space{self.action_space}  and the following "
                      f"observations space{self.observation_space}")
 
         # check scaler:
-        if "scaler" in config.keys():
-            self.scaler = config["scaler"]
-        else:
-            self.scaler = None
+        self.scaler = config.get("scaler", None)
+        if self.scaler is not None:
+            if isinstance(self.scaler, (str, Path)):
+                with open(self.scaler, "rb") as fp:
+                    self.scaler = pickle.load(fp)
+
+        self.topo = config.get("topo", False)
 
         # Initialize further arguments:
         assert 0.0 < action_threshold <= 1.0
@@ -157,19 +175,22 @@ class SeniorEnvRllib(gym.Env):
 
         self.step_in_env = 0
         self.passiv_reward = 0
-        self.obs = self.run_next_action()
+        self.obs_rl = self.run_next_action()
         self.reward = None
 
-        self.info = {}
-        self.done = None
+        self.info: Dict = {}
+        self.done = self.single_env.done
+        # Added for gymnasium
+        self.truncated, self.terminated = self.__check_terminated_truncated()
 
     def run_next_action(self) -> np.ndarray:
-        """ Run the environment until an action by the agent is required
+        """Run the environment until an action by the agent is required.
 
-        In this function, the grid2op env will run until it requires help
+        In this function, the Grid2Op Environment will run until it requires help
         from the agent. Then it will return the observation and wait for action.
 
-        Returns: observation
+        Returns:
+            Observation vector.
 
         """
         # init values
@@ -181,16 +202,21 @@ class SeniorEnvRllib(gym.Env):
         # If done, there is an extra reward.
         while continue_running:
             if cur_obs.rho.max() < self.action_threshold:
-                do_nothing = self.single_env.action_space({})
+                if self.topo:
+                    action_array = revert_topo(self.single_env.action_space, cur_obs)
+                    default_action = self.single_env.action_space.from_vect(action_array)
+                else:
+                    default_action = self.single_env.action_space({})
+
                 action = find_best_line_to_reconnect(obs=cur_obs,
-                                                     original_action=do_nothing)
+                                                     original_action=default_action)
                 # Execute in env:
-                cur_obs, reward, _, info = self.single_env.step(action)
+                cur_obs, reward, _, self.info = self.single_env.step(action)
                 cumulated_rew += reward
                 self.step_in_env += 1
 
                 if self.single_env.done:
-                    if 'GAME OVER' in str(info['exception']):
+                    if 'GAME OVER' in str(self.info['exception']):
                         cumulated_rew += -300
                     else:
                         cumulated_rew += 500
@@ -202,114 +228,151 @@ class SeniorEnvRllib(gym.Env):
         self.passiv_reward += cumulated_rew
 
         # Select subset if wanted
-        if self.chosen:
-            obs = self.obs_grid2op.to_vect()[self.chosen]
+        if isinstance(self.subset, list):
+            obs_rl = self.obs_grid2op.to_vect()[self.subset]
+        elif self.subset:
+            obs_rl = obs_to_vect(self.obs_grid2op, False)
         else:
-            obs = self.obs_grid2op.to_vect()
+            obs_rl = self.obs_grid2op.to_vect()
 
         # Select scaler if wanted
         if self.scaler:
-            if isinstance(self.scaler,BaseEstimator):
-                obs = self.scaler.transform(obs.reshape(1, -1)).reshape(-1, )
-            elif isinstance(self.scaler,ObjectRef):
-                obs = ray.get(self.scaler).transform(obs.reshape(1,-1)).reshape(-1,)
+            if isinstance(self.scaler, BaseEstimator):
+                obs_rl = self.scaler.transform(obs_rl.reshape(1, -1)).reshape(-1, )
+            elif isinstance(self.scaler, ObjectRef):
+                obs_rl = ray.get(self.scaler).transform(obs_rl.reshape(1, -1)).reshape(-1, )
 
-        return obs
+        return obs_rl
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, Union[float, int], bool, dict]:
-        """ Conduct the action of the agent
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, Union[float, int], bool, bool, dict]:
+        """Conduct the action of the agent.
 
-        This method does not only run the action of the agent but additionally also accumulates the
-        reward for the do nothing agent AFTER the action of the agent. Thus, if the action "saves" a
-        lot of steps, the agent receives an handsome reward.
+        This method does not only run the action of the agent but additionally accumulates the
+        reward for the do-nothing agent AFTER the action of the agent. Thus, if the action "saves" a
+        lot of steps, the agent receives a handsome reward.
 
-        Note: This method checks, whether the action is a tuple or tripple action. If the action
-        requires indeed multiple steps, then the action will be executed sequentially, i.e., 2 or 3 steps
-        in the grid2op Environment
+        Note: This method checks, whether the action is a tuple or a triple action. If the action
+        requires multiple steps indeed, then the action will be executed sequentially, i.e., 2 or 3 steps
+        in the Grid2Op Environment.
+
+        With the update to gymnasium the output is a little bit different
 
         Args:
-            action: id of the action within the action set
+            action: ID of the action within the action set.
 
         Returns:
+            The observation as np.ndarray, the reward, the info if it is terminated, the boolean if truncated
+            and the info, which is default.
 
         """
-        # check tuple/tripple action:
+        # For some reason sometime the environment is done but ray does not reinit it
+        if self.single_env.done:
+            logging.info("The Grid2Op Environment seems to be not initialized. We just return the last"
+                         "observation and do not run anything")
+            self.done = True
+            self.truncated, self.terminated = self.__check_terminated_truncated()
+
+            return self.obs_rl, 0.0, self.terminated, self.truncated, self.info
+
         cur_obs, reward, self.done, self.info = split_and_execute_action(env=self.single_env,
-                                                                         action=self.actions[action])
+                                                                         action_vect=self.actions[action])
 
         # get action:
         self.step_in_env += 1
         self.obs_grid2op = cur_obs
 
-        if self.chosen:
-            obs = cur_obs.to_vect()[self.chosen]
+        # Select subset if wanted
+        if isinstance(self.subset, list):
+            obs_rl = self.obs_grid2op.to_vect()[self.subset]
+        elif self.subset:
+            obs_rl = obs_to_vect(self.obs_grid2op, False)
         else:
-            obs = cur_obs.to_vect()
+            obs_rl = self.obs_grid2op.to_vect()
 
         if self.scaler:
-            if isinstance(self.scaler,BaseEstimator):
-                obs = self.scaler.transform(obs.reshape(1, -1)).reshape(-1, )
-            elif isinstance(self.scaler,ObjectRef):
-                obs = ray.get(self.scaler).transform(obs.reshape(1,-1)).reshape(-1,)
+            if isinstance(self.scaler, BaseEstimator):
+                obs_rl = self.scaler.transform(obs_rl.reshape(1, -1)).reshape(-1, )
+            elif isinstance(self.scaler, ObjectRef):
+                obs_rl = ray.get(self.scaler).transform(obs_rl.reshape(1, -1)).reshape(-1, )
 
-        self.obs = obs
+        self.obs_rl = obs_rl
 
         if (cur_obs.rho.max() < self.action_threshold) and self.done is False:
-            self.obs = self.run_next_action()
+            self.obs_rl = self.run_next_action()
             reward += self.passiv_reward
-            self.done = self.single_env.done
+
+        self.done = self.single_env.done
 
         # We add the passive reward to the overall reward
         self.reward = reward
 
-        return self.obs, self.reward, self.done, self.info
+        # Now check for Truncation
+        self.truncated, self.terminated = self.__check_terminated_truncated()
 
-    def reset(self, id: Optional[int] = None) -> np.ndarray:
-        """ Resetting the environment
+        return self.obs_rl, self.reward, self.terminated, self.truncated, self.info
+
+    def reset(self, seed: Optional[int] = None, options: Optional[Dict[str, int]] = None) -> Tuple[np.ndarray, dict]:
+        """ Resetting the environment.
 
         Args:
-            id: Optional id for the Grid2Op Enviornment. When you want to reset to a specific chronic
+            seed: Optional seed that gets passed to the environment.
+            options: Optional id for the Grid2Op Environment. When you want to reset to a specific chronic
+            reset the env with a dictionary and the key "id". As example {"id": 42}.
+
+        Returns:
+            Tuple with the observation and the info statement
+
+        """
+        try:
+            if seed:
+                self.single_env.seed(seed)
+            if isinstance(options, dict):
+                if "id" in options.keys():
+                    self.single_env.set_id(options)
+        except Exception as e:
+            logging.warning(f"The ID did not work with the environment and raised {e}. Reset without setting ID")
+
+        # Reset environment and run the Grid2Op Env
+        self.done = True
+        while self.done:
+            # We have to iterate over the environment, because it can happen that the environment
+            # can be finished without the intervention of the agent. By this loop we ensure that the
+            # Senior is needed.
+            self.obs_grid2op = self.single_env.reset()
+            self.step_in_env = 0
+            self.passiv_reward = 0
+            self.obs_rl = self.run_next_action()
+            if not self.single_env.done:
+                self.done = False
+
+        self.truncated, self.terminated = self.__check_terminated_truncated()
+
+        return self.obs_rl, self.info
+
+    def render(self, mode='human') -> None:
+        """Required for GYM Environment. However, we do not change anything.
+
+        Args:
+            mode: String.
+
+        Returns:
+             None.
+
+        """
+
+    def __check_terminated_truncated(self) -> Tuple[bool, bool]:
+        """ Check the env for terminated and truncated
 
         Returns:
 
         """
-        if id:
-            try:
-                self.single_env.set_id(id)
-            except:
-                logging.warning("The ID did not work with the environment. Reset without setting ID")
-        self.obs_grid2op = self.single_env.reset()
-        self.step_in_env = 0
-        self.passiv_reward = 0
-        self.obs = self.run_next_action()
-        return self.obs
 
-    def render(self, mode='human') -> None:
-        """ Required for gym environment. However, we do not change anything
+        if self.done:
+            trunc, term = True, False
+            # Check for termination (and revert truncation)
+            if self.single_env.nb_time_step == self.single_env.chronics_handler.max_episode_duration():
+                trunc, term = False, True
+        else:
+            trunc, term = False, False
 
-        Args:
-            mode: str
-
-        Returns: None
-
-        """
-
-    def __get_default_chosen(self) -> List:
-        """ Method to receive the default chosen values to filter the obs.to_vet
-
-        Note: Contrary to the Tutor, we now have one value less. Thus the list starts at 1
-
-        Returns: list of chosen values
-
-        """
-        # Assign label & features
-
-        chosen = list(range(1, 6)) + list(range(6, 72)) + list(range(72, 183)) + list(range(183, 655))
-        #       label      timestamp         generator-PQV            load-PQV                      line-PQUI
-        chosen += list(range(655, 714)) + list(range(714, 773)) + list(range(773, 832)) + list(range(832, 1009))
-        #               line-rho               line switch         line-overload steps          bus switch
-        chosen += list(range(1009, 1068)) + list(range(1068, 1104)) + list(range(1104, 1163)) + list(range(1163, 1222))
-        #          line-cool down steps   substation-cool down steps     next maintenance         maintenance duration
-        return chosen
-
-
+        return trunc, term

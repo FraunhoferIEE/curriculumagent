@@ -1,0 +1,121 @@
+[2023-06-26 16:27:37,334 I 34 34] (gcs_server) io_service_pool.cc:35: IOServicePool is running with 1 io_service.
+[2023-06-26 16:27:37,346 I 34 34] (gcs_server) event.cc:234: Set ray event level to warning
+[2023-06-26 16:27:37,347 I 34 34] (gcs_server) event.cc:342: Ray Event initialized for GCS
+[2023-06-26 16:27:37,348 I 34 34] (gcs_server) gcs_server.cc:58: GCS storage type is memory
+[2023-06-26 16:27:37,350 I 34 34] (gcs_server) gcs_init_data.cc:44: Loading job table data.
+[2023-06-26 16:27:37,350 I 34 34] (gcs_server) gcs_init_data.cc:56: Loading node table data.
+[2023-06-26 16:27:37,351 I 34 34] (gcs_server) gcs_init_data.cc:68: Loading cluster resources table data.
+[2023-06-26 16:27:37,352 I 34 34] (gcs_server) gcs_init_data.cc:95: Loading actor table data.
+[2023-06-26 16:27:37,352 I 34 34] (gcs_server) gcs_init_data.cc:108: Loading actor task spec table data.
+[2023-06-26 16:27:37,353 I 34 34] (gcs_server) gcs_init_data.cc:81: Loading placement group table data.
+[2023-06-26 16:27:37,353 I 34 34] (gcs_server) gcs_init_data.cc:48: Finished loading job table data, size = 0
+[2023-06-26 16:27:37,354 I 34 34] (gcs_server) gcs_init_data.cc:60: Finished loading node table data, size = 0
+[2023-06-26 16:27:37,355 I 34 34] (gcs_server) gcs_init_data.cc:72: Finished loading cluster resources table data, size = 0
+[2023-06-26 16:27:37,355 I 34 34] (gcs_server) gcs_init_data.cc:99: Finished loading actor table data, size = 0
+[2023-06-26 16:27:37,356 I 34 34] (gcs_server) gcs_init_data.cc:112: Finished loading actor task spec table data, size = 0
+[2023-06-26 16:27:37,356 I 34 34] (gcs_server) gcs_init_data.cc:86: Finished loading placement group table data, size = 0
+[2023-06-26 16:27:37,359 I 34 34] (gcs_server) grpc_server.cc:140: GcsServer server started, listening on port 51831.
+[2023-06-26 16:27:37,376 I 34 34] (gcs_server) gcs_server.cc:193: GcsNodeManager: 
+- RegisterNode request count: 0
+- DrainNode request count: 0
+- GetAllNodeInfo request count: 0
+- GetInternalConfig request count: 0
+
+GcsActorManager: 
+- RegisterActor request count: 0
+- CreateActor request count: 0
+- GetActorInfo request count: 0
+- GetNamedActorInfo request count: 0
+- GetAllActorInfo request count: 0
+- KillActor request count: 0
+- ListNamedActors request count: 0
+- Registered actors count: 0
+- Destroyed actors count: 0
+- Named actors count: 0
+- Unresolved actors count: 0
+- Pending actors count: 0
+- Created actors count: 0
+- owners_: 0
+- actor_to_register_callbacks_: 0
+- actor_to_create_callbacks_: 0
+- sorted_destroyed_actor_list_: 0
+
+GcsResourceManager: 
+- GetResources request count: 0
+- GetAllAvailableResources request count0
+- ReportResourceUsage request count: 0
+- GetAllResourceUsage request count: 0
+
+GcsPlacementGroupManager: 
+- CreatePlacementGroup request count: 0
+- RemovePlacementGroup request count: 0
+- GetPlacementGroup request count: 0
+- GetAllPlacementGroup request count: 0
+- WaitPlacementGroupUntilReady request count: 0
+- GetNamedPlacementGroup request count: 0
+- Scheduling pending placement group count: 0
+- Registered placement groups count: 0
+- Named placement group count: 0
+- Pending placement groups count: 0
+- Infeasible placement groups count: 0
+
+GcsPublisher {}
+
+[runtime env manager] ID to URIs table:
+[runtime env manager] URIs reference table:
+
+GcsTaskManager: 
+-Total num task events reported: 0
+-Total num status task events dropped: 0
+-Total num profile events dropped: 0
+-Total num bytes of task event stored: 0MiB
+-Current num of task events stored: 0
+-Total num of actor creation tasks: 0
+-Total num of actor tasks: 0
+-Total num of normal tasks: 0
+-Total num of driver tasks: 0
+
+
+[2023-06-26 16:27:37,377 I 34 34] (gcs_server) gcs_server.cc:754: Event stats:
+
+
+Global stats: 28 total (16 active)
+Queueing time: mean = 2.038 ms, max = 19.307 ms, min = 2.600 us, total = 57.066 ms
+Execution time:  mean = 818.062 us, total = 22.906 ms
+Event stats:
+	GcsInMemoryStore.GetAll - 6 total (0 active), CPU time: mean = 3.811 ms, total = 22.865 ms
+	InternalKVGcsService.grpc_client.InternalKVPut - 6 total (6 active), CPU time: mean = 0.000 s, total = 0.000 s
+	InternalKVGcsService.grpc_server.InternalKVPut - 6 total (3 active), CPU time: mean = 5.283 us, total = 31.700 us
+	GcsInMemoryStore.Put - 4 total (3 active), CPU time: mean = 550.000 ns, total = 2.200 us
+	PeriodicalRunner.RunFnPeriodically - 4 total (2 active, 1 running), CPU time: mean = 1.700 us, total = 6.800 us
+	UNKNOWN - 1 total (1 active), CPU time: mean = 0.000 s, total = 0.000 s
+	RayletLoadPulled - 1 total (1 active), CPU time: mean = 0.000 s, total = 0.000 s
+
+
+[2023-06-26 16:27:37,378 I 34 34] (gcs_server) gcs_server.cc:755: GcsTaskManager Event stats:
+
+
+Global stats: 0 total (0 active)
+Queueing time: mean = -nan s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+Execution time:  mean = -nan s, total = 0.000 s
+Event stats:
+
+
+[2023-06-26 16:27:40,715 I 34 34] (gcs_server) gcs_node_manager.cc:42: Registering node info, node id = 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9, address = 172.17.0.2, node name = 172.17.0.2
+[2023-06-26 16:27:40,716 I 34 34] (gcs_server) gcs_node_manager.cc:48: Finished registering node info, node id = 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9, address = 172.17.0.2, node name = 172.17.0.2
+[2023-06-26 16:27:40,717 I 34 34] (gcs_server) gcs_placement_group_manager.cc:769: A new node: 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9 registered, will try to reschedule all the infeasible placement groups.
+[2023-06-26 16:27:40,733 I 34 34] (gcs_server) gcs_job_manager.cc:149: Getting all job info.
+[2023-06-26 16:27:40,734 I 34 34] (gcs_server) gcs_job_manager.cc:218: Finished getting all job info.
+[2023-06-26 16:27:42,870 I 34 34] (gcs_server) gcs_job_manager.cc:42: Adding job, job id = 01000000, driver pid = 1
+[2023-06-26 16:27:42,872 I 34 34] (gcs_server) gcs_job_manager.cc:57: Finished adding job, job id = 01000000, driver pid = 1
+[2023-06-26 16:27:43,936 I 34 34] (gcs_server) gcs_job_manager.cc:87: Finished marking job state, job id = 01000000
+[2023-06-26 16:27:44,353 I 34 34] (gcs_server) gcs_node_manager.cc:88: Draining node info, node id = 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9
+[2023-06-26 16:27:44,354 I 34 34] (gcs_server) gcs_node_manager.cc:212: Removing node, node id = 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9, node name = 172.17.0.2
+[2023-06-26 16:27:44,355 I 34 34] (gcs_server) gcs_placement_group_manager.cc:739: Node 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9 failed, rescheduling the placement groups on the dead node.
+[2023-06-26 16:27:44,356 I 34 34] (gcs_server) gcs_actor_manager.cc:1035: Node 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9 failed, reconstructing actors.
+[2023-06-26 16:27:44,486 I 34 34] (gcs_server) gcs_node_manager.cc:134: Raylet 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9 is drained. Status GrpcUnavailable: RPC Error message: Cancelling all calls; RPC Error details: . The information will be published to the cluster.
+[2023-06-26 16:27:44,502 I 34 47] (gcs_server) ray_syncer-inl.h:308: Failed to read the message from: 2ad95b5b2cce4db3a8c8e7de4bf59f73ba5c40d18178cd845643b2c9
+[2023-06-26 16:27:44,516 I 34 34] (gcs_server) gcs_server_main.cc:108: GCS server received SIGTERM, shutting down...
+[2023-06-26 16:27:44,517 I 34 34] (gcs_server) gcs_server.cc:215: Stopping GCS server.
+[2023-06-26 16:27:44,531 I 34 34] (gcs_server) gcs_server.cc:239: GCS server stopped.
+[2023-06-26 16:27:44,532 I 34 34] (gcs_server) io_service_pool.cc:47: IOServicePool is stopped.

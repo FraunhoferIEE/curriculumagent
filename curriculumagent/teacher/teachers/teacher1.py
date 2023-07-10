@@ -1,5 +1,4 @@
-"""
-In this file, we do the following thing repeatedly:
+"""In this file, we do the following thing repeatedly:
     1. choose a scenario
     2. sample a time-step every 6 hours
     3. disconnect a line which is under possible attack
@@ -28,34 +27,42 @@ from curriculumagent.teacher.submodule.encoded_action import EncodedTopologyActi
 from curriculumagent.teacher.submodule.topology_action_search import topology_search_topk
 
 
-def collect_attacker_experience(save_path: Path,
-                                env_name_path: Union[str,Path], chronics_path: str, line_to_disconnect: int,
-                                n_episodes: int, top_k: int,
-                                seed: Optional[int] = None):
+def collect_attacker_experience(
+        save_path: Path,
+        env_name_path: Union[str, Path],
+        chronics_path: str,
+        line_to_disconnect: int,
+        n_episodes: int,
+        top_k: int,
+        seed: Optional[int] = None,
+):
     """Collect useful actions by attacking/disconnecting specific lines at random timesteps
     and trying to find the best action to resolve that problem.
 
     Args:
-        save_path: Path to save the experience file to.
-        env_name_path: Path to grid2op dataset or the standard name of it.
+        save_path: Path to save the teacher_experience file to.
+        env_name_path: Path to Grid2Op dataset or the standard name of it.
         line_to_disconnect: The line to disconnect in this trial/scenario.
         chronics_path: The path to the chronics of the environment.
         n_episodes: Number of episodes(run through all scenarios) to run.
-        top_k: How many of the top best actions should be saved in the experience file at save_path.
-        seed: Optional seed for Grid2Op Env and sampling
+        top_k: How many of the top best actions should be saved in the teacher_experience file at save_path.
+        seed: Optional seed for Grid2Op Env and sampling.
+
+    Returns:
+        None.
     """
-    # Setup environment with best possible backend
+    # Setup environment with the best possible backend
     try:
         # if lightsim2grid is available, use it.
         from lightsim2grid import LightSimBackend
+
         backend = LightSimBackend()
     except ImportError:  # noqa
         backend = PandaPowerBackend()
         logging.warning("Not using lightsim2grid! Operation will be slow!")
     if chronics_path:
         # Use env_name_path as path together with chronics_path
-        env: BaseEnv = grid2op.make(dataset=env_name_path, chronics_path=chronics_path,
-                                    backend=backend)
+        env: BaseEnv = grid2op.make(dataset=env_name_path, chronics_path=chronics_path, backend=backend)
     else:
         # Use env_name_path as name
         env: BaseEnv = grid2op.make(dataset=env_name_path, backend=backend)
@@ -71,10 +78,11 @@ def collect_attacker_experience(save_path: Path,
         env.reset()  # env.reset() loads the next chronic
         timestep = n_episodes * 72 + random.randint(0, 72)  # a random sampling every 6 hours
         logging.info(
-            f'Scenario[{env.chronics_handler.get_name()}]: '
-            f'at step[{timestep:d}], disconnect line-{line_to_disconnect:d}'
-            f'(from bus-{env.line_or_to_subid[line_to_disconnect]:d} '
-            f'to bus-{env.line_ex_to_subid[line_to_disconnect]:d}]')
+            f"Scenario[{env.chronics_handler.get_name()}]: "
+            f"at step[{timestep:d}], disconnect line-{line_to_disconnect:d}"
+            f"(from bus-{env.line_or_to_subid[line_to_disconnect]:d} "
+            f"to bus-{env.line_ex_to_subid[line_to_disconnect]:d}]"
+        )
         # to the destination time-step
         env.fast_forward_chronics(timestep - 1)
         obs, _, done, _ = env.step(env.action_space({}))
@@ -97,26 +105,33 @@ def collect_attacker_experience(save_path: Path,
         save_sample_new(Path(save_path), best_actions, obs, obs_, top_k=top_k)
 
 
-def run_attacking_teacher(save_path: Path,
-                          env_name_path: Union[Path, str] = 'l2rpn_neurips_2020_track1_small',
-                          *, n_episodes: int = 100, top_k: int = 125,
-                          jobs: int = os.cpu_count(),
-                          seed: Optional[int] = None):
+def run_attacking_teacher(
+        save_path: Path,
+        env_name_path: Union[Path, str] = "l2rpn_neurips_2020_track1_small",
+        *,
+        n_episodes: int = 100,
+        top_k: int = 125,
+        jobs: int = os.cpu_count(),
+        seed: Optional[int] = None,
+):
     """This teacher is trying to collect useful actions by attacking/disconnecting specific lines at random timesteps
     and trying to find the best action to resolve that problem.
 
     Args:
-        save_path: Path to save the experience file to.
-        env_name_path: Path to grid2op dataset or the standard name of it.
+        save_path: Path to save the teacher_experience file to.
+        env_name_path: Path to Grid2Op dataset or the standard name of it.
         n_episodes: Number of episodes(run through all scenarios) to run.
-        top_k: How many of the top best actions should be saved in the experience file at save_path.
-        jobs: Number of jobs to use for parallel experience collection.
-        seed: Optional seed for the Grid2Op Environment and random sampling
+        top_k: How many of the top best actions should be saved in the teacher_experience file at save_path.
+        jobs: Number of jobs to use for parallel teacher_experience collection.
+        seed: Optional seed for the Grid2Op Environment and random sampling.
+
+    Returns:
+        None.
     """
     # hyper-parameters
     env_lines2attack = {
-        'l2rpn_case14_sandbox': [1, 10, 15],
-        'l2rpn_neurips_2020_track1_small': [45, 56, 0, 9, 13, 14, 18, 23, 27, 39],
+        "l2rpn_case14_sandbox": [1, 10, 15],
+        "l2rpn_neurips_2020_track1_small": [45, 56, 0, 9, 13, 14, 18, 23, 27, 39],
     }
 
     env_name = env_name_path
@@ -128,12 +143,12 @@ def run_attacking_teacher(save_path: Path,
     try:
         lines2attack = env_lines2attack[env_name]
     except KeyError as error:
-        raise ValueError(f'No lines to attack available for {env_name}') from error
+        raise ValueError(f"No lines to attack available for {env_name}") from error
 
     env_name_path = Path(env_name_path).expanduser()
     chronics_path = None
     if env_name_path.is_dir():
-        chronics_path = str(env_name_path / 'chronics')
+        chronics_path = str(env_name_path / "chronics")
     env_name_path = str(env_name_path)
 
     start = time.time()
@@ -151,8 +166,3 @@ def run_attacking_teacher(save_path: Path,
     elapsed = end - start
     logging.info(f"Time: {elapsed}s")
 
-
-if __name__ == "__main__":
-    log_format = '(%(asctime)s) [%(name)-10s] %(levelname)8s: %(message)s [%(filename)s:%(lineno)s]'
-    logging.basicConfig(level=logging.INFO, format=log_format)
-    defopt.run(run_attacking_teacher)
