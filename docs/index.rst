@@ -1,17 +1,17 @@
 Welcome to CurriculumAgent's documentation!
 ============================================================
 
-This is the documentation of the CurriculumAgent which is a fork and improvement
-of the `binbinchen agent <https://github.com/AsprinChina/L2RPN_NIPS_2020_a_PPO_Solution>`_ of the
+This is the documentation of the CurriculumAgent which is a cleanup and improved version of the
+of the `NeurIPS 2020 Competition Agent by binbinchen <https://github.com/AsprinChina/L2RPN_NIPS_2020_a_PPO_Solution>`_ of the
 `L2RPN Competition of 2020 with the Robustness Track <https://competitions.codalab.org/competitions/25426>`_.
-
-The main improvements over the original agents consists of code cleanup, unit tests and the introduction of
-more sophisticated methods to do action space reduction with the :doc:`agents/teacher`.
-Further it is possible to train the agent using `RLLib <https://www.ray.io/rllib>`_ which makes trying
-out different RL algorithms easier.
+The agent is build to extract action sets of the Grid2Op Environment and then use rule-based agent to train
+a Reinforcement Learning agent. We explain each step in more detail in our paper
+`Managing power grids through topology actions: A comparative study between advanced rule-based and reinforcement learning agents <https://doi.org/10.1016/j.egyai.2023.100276>`_
+When using the CurriculumAgent, please cite our paper.
 
 Take a look at the :doc:`overview`, to get a feel of how the agent works and how each part of it can be
 used.
+
 
 .. toctree::
     :maxdepth: 1
@@ -21,6 +21,7 @@ used.
     agents/tutor
     agents/junior
     agents/senior
+    baseline
 
     Generated API Documentation<api/curriculumagent>
 

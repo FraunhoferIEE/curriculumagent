@@ -7,7 +7,7 @@ The *Junior* sub agent is the first deep learning method in CurriculumAgent pipe
 to mimic the actions of the greedy :doc:`tutor` agent. The purpose of this agent is to fit a sequential
 neural network, i.e., the weights of the network, on the input data of the Grid2Op environment.
 After a successful training, the weights are then used for the :doc:`senior` in order to warm start the Deep
-Reinforcement Learning approach. Accordingly the *Junior* sub agent plays a vital role in the
+Reinforcement Learning approach. Accordingly, the *Junior* sub agent plays a vital role in the
 curriculum approach.
 
 Usage

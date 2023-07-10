@@ -11,10 +11,11 @@ It is contained in the :mod:`~curriculumagent.tutor` module and consists of two 
 :class:`tutors.original_tutor.Tutor` and :class:`tutors.general_tutor.GeneralTutor` class. That class is then being used by
 the :mod:`~curriculumagent.tutor.collect_tutor_experience` to generate action, observation pairs for the :doc:`junior`.
 
-The binbinchen agent used an actionspace of 208 unitary actions which were split into two subsets of 62 and 146 actions.
-Instead of running through all of them equally, the tutor started by only considering the first 62 actions and stopped
-when a good action was found that reduced the max load/rho below 0.99.
-Only when those 62 actions failed in that task it took a look and simulated the outcome of the 146 actions.
+Further it is possible to sequentially test different action sets.
+In the example of the NeurIPS 2020 challenge, the original agent by binbinchen used an actionspace of 208 unitary
+actions, which were split into two subsets of 62 and 146 actions. Instead of running through all of them equally, the tutor started by only considering the first 62 actions and stopped
+when a good action was found that reduced the max load/rho below 0.99. Only when those 62 actions failed in that task it took a look and simulated the outcome of the 146 actions.
+
 
 While the tutor implementation from above only handles unitary actions properly, the :mod:`~curriculumagent.tutor.tutors.general_tutor`
 is aimed to also work with various action sets, including tuple and triple actions. For this feature one just passes

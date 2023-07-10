@@ -11,16 +11,7 @@ instead of a greedy approach the agents selects the actions based on the reward 
 in order to achieve a faster training result, the *Senior* agent receives the weights of the :doc:`junior`
 agent for a warm start.
 
-In the CurriculumAgent pipeline there exist two different implementations of the *Senior* agent, both based on the
-PPO algorithm. The first approach is based on the
-`Stable Baselines <https://stable-baselines.readthedocs.io/en/master/modules/ppo2.html>`_ and can be executed
-by :mod:`~curriculumagent.senior.senior_student`. The second option is based on the
-`(RLlib <https://docs.ray.io/en/latest/rllib/index.html>`_ framework, which can be found in the
-:mod:`~curriculumagent.senior.senior_student_rllib`. While the first option implements a the PPO in a
-straightforward way, the section option enables the usage of different hyperparameter searches,
-such as Population Based Training `(PBT) <https://docs.ray.io/en/latest/tune/tutorials/tune-advanced-tutorial.html>`_
-, or even the selection of a different DRL algorithm, e.g., see `Algorithms
-<https://docs.ray.io/en/latest/rllib/rllib-algorithms.html>`_.
-
-After training the PPO, the modle then only needs to be transfered to the submission directory in order
-to have a completed agent.
+In the *Senior* agent is trained with the `(RLlib <https://docs.ray.io/en/latest/rllib/index.html>`_ framework.
+For the training, use the :mod:`~curriculumagent.senior.Senior` and run the train method. Afterwards, you
+can save the model of either the last checkpoint or a selected one of your choice. After training the PPO, the model
+only needs to be transferred to the submission directory in order to have a completed agent.

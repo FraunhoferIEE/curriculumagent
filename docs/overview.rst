@@ -22,14 +22,14 @@ Finally the trained neural network of the *Junior* is used by senior as a starti
 Together with some expert rules, like reconnection of lines the *Senior* is then used as the final agent, reaching
 the best performance. That agent is defined in :mod:`curriculumagent.submission.my_agent`.
 
-Pipeline overview
+Paper
+==================
+If you want a detailed explanation of each agent and their mechanisms, we again refer to the paper
+
+
+Baseline and Pipeline overview
 -----------------
 
-To produce the final agent all these modules have to work together and produce intermediary results.
-The following image outlines the structure of the agent:
-
-.. figure:: /_static/pipeline.png
-    :alt: The architecture of the pipeline.
-
-    The different modules of the agent being executued, producing different intermediary files to reach
-    the end result.
+Considering that the full `Teacher-Tutor-Junior-Senior` pipeline might seem a little bit excessive, we
+provide within the package a baseline module, described in :doc:`baseline`. Here you can first initialize the Baseline
+and then either import and retrain an already existing model, or train all of the steps yourself.
