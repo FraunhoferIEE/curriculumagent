@@ -68,7 +68,7 @@ if __name__ == '__main__':
     setup(
         # General ---
         name=PACKAGE_NAME,
-        verion=versioneer.get_version(),
+        version=versioneer.get_version(),
         cmdclass=versioneer.get_cmdclass(),
 
         packages=find_packages(exclude=['docs', 'tests', 'tests.*']),
