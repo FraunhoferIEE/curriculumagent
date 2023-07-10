@@ -137,20 +137,20 @@ jobs:
         run: |
           pip install build
           python -m build --sdist --wheel --outdir dist/ .
-          - name: Archive Build results
-            uses: actions/upload-artifact@v3
-            with:
-              name: Build Files
-              path: dist/
-              retention-days: 7
-            if: ${{ always() }}
-            # Publishing on Testpipy
-            #uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-          - name: Publish package
-            if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-            uses: pypa/gh-action-pypi-publish@release/v1
-            with:
-              user: __token__
-              password: ${{ secrets.PYPI_API_TOKEN_TEST }}
-              repository_url: https://test.pypi.org/legacy/
-              skip_existing: true
+      - name: Archive Build results
+        uses: actions/upload-artifact@v3
+        with:
+          name: Build Files
+          path: dist/
+          retention-days: 7
+        if: ${{ always() }}
+        # Publishing on Testpipy
+        #uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+      - name: Publish package
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN_TEST }}
+          repository_url: https://test.pypi.org/legacy/
+          skip_existing: true
