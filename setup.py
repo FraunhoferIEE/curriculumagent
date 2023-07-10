@@ -40,7 +40,7 @@ URLS = {'GITHUB': 'https://github.com/FraunhoferIEE/curriculumagent/',
 }
 SCRIPTS = []  # no scripts necessary
 CLASSIFIERS = [
-    'Development Status :: 4 - Beta',  # TODO: change classifiers
+    'Development Status :: 4 - Beta',
     'Programming Language :: Python :: 3.10',
 ]
 

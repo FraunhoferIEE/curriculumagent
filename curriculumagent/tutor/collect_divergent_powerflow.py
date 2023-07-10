@@ -188,6 +188,5 @@ def generate_divergent_exp(
         now = datetime.now().strftime("%d%m%Y_%H%M%S")
         save_path = save_path / f"divergent_powerflow_{now}.npy"
 
-    # TODO: Should use savez_compressed since data has low entropy, have to adapt junior as well
     np.save(save_path, all_experience)
     logging.info(f"Divergent PF teacher_experience has been saved to {save_path}")
