@@ -123,9 +123,10 @@ jobs:
           pip install -r requirements-dev.txt
           pip install build
       - name: Build Package
-        run: python -m build
+        run: python -m build --sdist --wheel
       - name: Publish package
-        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        #uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}

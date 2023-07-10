@@ -1,5 +1,8 @@
 CurriculumAgent
 ===============
+[![CI](https://github.com/FraunhoferIEE/CurriculumAgent/actions/workflows/main.yml/badge.svg)](https://github.com/FraunhoferIEE/CurriculumAgent/actions/workflows/main.yml)
+[![Documentation Status](https://readthedocs.org/projects/curriculumagent/badge/?version=latest)](https://curriculumagent.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/CurriculumAgent.svg)](https://badge.fury.io/py/CurriculumAgent)
 
 CurriculumAgent is a cleanup and improved version of the
 [NeurIPS 2020 Competition Agent by binbinchen](https://github.com/AsprinChina/L2RPN_NIPS_2020_a_PPO_Solution).

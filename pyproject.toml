@@ -1,0 +1,65 @@
+[build-system]
+requires = [
+    "setuptools >= 42", # At least v42 of setuptools required!
+    "versioningit"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "curriculumagent"
+dynamic = ["version"]
+authors = [
+    { name = "Malte Lehna", email = "malte.lehna@iee.fraunhofer.de" },
+]
+description = "CurriculumAgent is a Reinforcement Learning Agent designed to learn from and act within the Grid2Op Environments."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "grid2op>=1.9.0",
+    "numba>=0.55.1",
+    "scipy>=1.6.0",
+    "pandas>=1.3.0",
+    "pandapower>=2.8.0",
+    "tqdm>=4.62.2",
+    "LightSim2Grid>=0.7.1",
+    "ubelt>=0.10.1",
+    "gymnasium",
+    "ray==2.5.1",
+    "ray[tune]==2.5.1",
+    "ray[rllib]==2.5.1",
+    "defopt",
+    "grpcio",
+    "tensorflow==2.12.1",
+    "tensorflow-probability==0.20.1",
+    "jupyter",
+    "l2rpn_baselines",
+    "scikit-learn",
+    "matplotlib",
+    "nni",
+    "nni[BOHB]",
+    "ConfigSpace",
+    "typeguard<3",
+    "pathlib",
+    "filelock==3.10
+]
+
+
+[tool.setuptools]
+py-modules = ['curriculumagent']
+
+[project.urls]
+"Homepage" = "https://github.com/FraunhoferIEE/curriculumagent"
+"Bug Tracker" = "https://github.com/FraunhoferIEE/curriculumagent/issues"
+
+[tool.versioningit.vcs]
+# The method key:
+method = "git"  # <- The method name
+
+# Parameters to pass to the method:
+match = ["v*"]
+default-tag = "0.1.0"
