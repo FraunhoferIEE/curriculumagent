@@ -135,7 +135,7 @@ jobs:
       - name: Build package
         run: |
           pip install build
-          python -m build --sdist --wheel --outdir dist/ .
+          python -m build --outdir dist/ .
       - name: Archive Build results
         uses: actions/upload-artifact@v3
         with:
