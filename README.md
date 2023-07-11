@@ -22,7 +22,7 @@ When using the CurriculumAgent, please cite our paper with.
 	date = {2023},
 }
 ```
-The code of the paper can be found under `/paper_data_MPGTTA`.
+The code of the paper can be found under `/paper_data_MPGTTA` in the project directory.
 
 Setup
 -----
