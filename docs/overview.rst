@@ -8,7 +8,7 @@ What follows is a description and an illustration on how the agents interact wit
     :alt: The four stages of the binbinchen agent.
 
     Overview of the binbinchen agent. Read from top left to bottom right.
-    (Source: original binbinchen agent presentation)
+    (Source: original binbinchen agent presentation from `binbinchen <https://github.com/AsprinChina/L2RPN_NIPS_2020_a_PPO_Solution>`_)
 
 The first two agents, the :doc:`agents/teacher` and the :doc:`agents/tutor` are greedy expert agents responsible
 for generating a reduced actions space(RAS) and experience in form of ``(action, observation)`` pairs.
@@ -25,6 +25,7 @@ the best performance. That agent is defined in :mod:`curriculumagent.submission.
 Paper
 ==================
 If you want a detailed explanation of each agent and their mechanisms, we again refer to the paper
+`Managing power grids through topology actions: A comparative study between advanced rule-based and reinforcement learning agents <https://doi.org/10.1016/j.egyai.2023.100276>`_
 
 
 Baseline and Pipeline overview
@@ -32,4 +33,4 @@ Baseline and Pipeline overview
 
 Considering that the full `Teacher-Tutor-Junior-Senior` pipeline might seem a little bit excessive, we
 provide within the package a baseline module, described in :doc:`baseline`. Here you can first initialize the Baseline
-and then either import and retrain an already existing model, or train all of the steps yourself.
+and either import and retrain an already existing model, or train all of the steps yourself.

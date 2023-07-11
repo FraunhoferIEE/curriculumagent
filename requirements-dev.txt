@@ -6,6 +6,6 @@ tox
 pytest
 pytest-benchmark
 pylint
-sphinx
+sphinx<7
 sphinx-autodoc-typehints
 sphinx_rtd_theme

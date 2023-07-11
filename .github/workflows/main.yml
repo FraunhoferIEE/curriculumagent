@@ -120,13 +120,12 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v3
-      - name: Make documentation
+      - name: Test if making documentation works
         run: |
           pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
           mkdir -p docs/api/
           sphinx-apidoc --separate --module-first --force -o docs/api/ curriculumagent/  [curriculumagent/action_space, curriculumagent/data,curriculumagent/junior/training_data,curriculumagent/junior/training_data, curriculumagent/scripts,curriculumagent/senior/ckpt,curriculumagent/senior/JuniorModel, curriculumagent/submission/action_sets,curriculumagent/submission/ppo-ckpts]
           sphinx-build -b html docs docs/build
-          cp docs/build -r public
   build:
     needs: pages
     runs-on: ubuntu-latest
