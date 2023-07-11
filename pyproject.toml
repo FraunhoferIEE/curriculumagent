@@ -45,7 +45,7 @@ dependencies = [
     "ConfigSpace",
     "typeguard<3",
     "pathlib",
-    "filelock==3.10
+    "filelock==3.10"
 ]
 
 
