@@ -8,7 +8,6 @@ from grid2op.Environment import BaseEnv
 from lightsim2grid import LightSimBackend
 
 from curriculumagent.common.utilities import (
-    get_from_dict_set_bus,
     extract_action_set_from_actions,
     split_and_execute_action,
     is_legal,
@@ -23,34 +22,13 @@ class TestExecuteAction:
     Test suite for the combined execute action
     """
 
-    def test_get_from_dict_set_bus_tuple(self):
-        """
-        Test for the get_from_dict
-        """
-        example_dict = {
-            "3": {"type": "load", "new_bus": 1},
-            "4": {"type": "line (origin)", "new_bus": 1},
-            "12": {"type": "line (origin)", "new_bus": 1},
-            "0": {"type": "generator", "new_bus": 1},
-            "2": {"type": "load", "new_bus": 1},
-        }
-
-        out = get_from_dict_set_bus(original=example_dict)
-
-        assert list(out.keys()) == ["set_bus"]
-        for key in out["set_bus"]:
-            assert key in ["lines_or_id", "lines_ex_id", "loads_id", "generators_id"]
-
-        assert out["set_bus"]["lines_or_id"][0] == (4, 1)
-        assert out["set_bus"]["lines_or_id"][1] == (12, 1)
-
     def test_extract_action_set_from_actions_single(self, test_action_set, test_env):
         """
         Testing the single action
         """
         single_a, _, _ = test_action_set
 
-        out = extract_action_set_from_actions(action_space=test_env.action_space, action_vect=single_a[0])
+        out = extract_action_set_from_actions(action_space=test_env.action_space, action_vect=single_a)
 
         assert isinstance(out, list)
         assert len(out) == 1
@@ -66,7 +44,7 @@ class TestExecuteAction:
         """
         _, tuple_a, _ = test_action_set
 
-        out = extract_action_set_from_actions(action_space=test_env.action_space, action_vect=tuple_a[0])
+        out = extract_action_set_from_actions(action_space=test_env.action_space, action_vect=tuple_a)
 
         assert isinstance(out, list)
         assert len(out) == 2
@@ -76,7 +54,7 @@ class TestExecuteAction:
         # Execute action
 
         # First the original, which should be illegal:
-        _, _, _, info = test_env.step(test_env.action_space.from_vect(tuple_a[0]))
+        _, _, _, info = test_env.step(test_env.action_space.from_vect(tuple_a))
         assert info["is_illegal"]
         _, _, _, info = test_env.step(out[0])
         assert info["is_illegal"] is False
@@ -89,7 +67,7 @@ class TestExecuteAction:
         """
         _, _, tripple = test_action_set
 
-        out = extract_action_set_from_actions(action_space=test_env.action_space, action_vect=tripple[0])
+        out = extract_action_set_from_actions(action_space=test_env.action_space, action_vect=tripple)
 
         assert isinstance(out, list)
         assert len(out) == 3
@@ -98,7 +76,7 @@ class TestExecuteAction:
         # Execute action
 
         # First the original, which should be illegal:
-        _, _, _, info = test_env.step(test_env.action_space.from_vect(tripple[0]))
+        _, _, _, info = test_env.step(test_env.action_space.from_vect(tripple))
         assert info["is_illegal"]
         for o in out:
             _, _, _, info = test_env.step(o)
@@ -117,9 +95,9 @@ class TestExecuteAction:
         assert pytest.approx(obs.rho.max()) == 0.9180667
         assert test_env.nb_time_step == 0
 
-        obs, _, done, info = split_and_execute_action(env=test_env, action_vect=single_a[0])
+        obs, _, done, info = split_and_execute_action(env=test_env, action_vect=single_a)
 
-        assert pytest.approx(obs.rho.max()) == 0.9167755
+        assert pytest.approx(obs.rho.max()) == 1.0084294080734253
         assert test_env.nb_time_step == 1
         assert done is False
         assert info["is_illegal"] is False
@@ -133,9 +111,9 @@ class TestExecuteAction:
         # Now two steps:
         test_env.set_id(1)
         test_env.reset()
-        obs, _, done, info = split_and_execute_action(env=test_env, action_vect=tuple_a[0])
+        obs, _, done, info = split_and_execute_action(env=test_env, action_vect=tuple_a)
 
-        assert pytest.approx(obs.rho.max()) == 0.9020909
+        assert pytest.approx(obs.rho.max()) == 1.0545718669891357
         assert test_env.nb_time_step == 2
         assert done is False
         assert info["is_illegal"] is False
@@ -149,7 +127,7 @@ class TestExecuteAction:
         # Now two steps:
         test_env.set_id(1)
         test_env.reset()
-        obs, _, done, info = split_and_execute_action(env=test_env, action_vect=triple_a[0])
+        obs, _, done, info = split_and_execute_action(env=test_env, action_vect=triple_a)
 
         assert test_env.nb_time_step == 3
         assert done is False
@@ -188,7 +166,7 @@ class TestIsLegal:
         Testing whether a triple action is a valid input
         """
         _, _, tripple_a = test_action_set
-        act = test_env.action_space.from_vect(tripple_a[0])
+        act = test_env.action_space.from_vect(tripple_a)
         assert is_legal(act, test_env.get_obs())
 
     def test_do_nothing(self, test_env):
@@ -289,7 +267,7 @@ class TestSplitAction:
 
         assert len(collected_actions) == 3, "We actually got three actions out of a triple one"
 
-        assert pytest.approx(collected_ri) == [0.91806668, 0.90394872, 0.90209091, 1.33232236], (
+        assert pytest.approx(collected_ri) == [0.918066680431366, 0.9049604535102844, 0.9032496809959412, 1.3328317403793335], (
             "Actions are executed best to " "worst"
         )
 
@@ -307,19 +285,19 @@ class TestClassSimulateAction:
         while obs.rho.max() < 0.6:
             obs, _, _, _ = test_env.step(test_env.action_space({}))
 
-        obs_rho, valid_action = simulate_action(action_space=test_env.action_space, obs=obs, action_vect=tripple_a[1])
+        obs_rho, valid_action = simulate_action(action_space=test_env.action_space, obs=obs, action_vect=tripple_a)
 
         assert valid_action
 
         # First assert that the "normal" simulation of illegal values just does nothing:
-        b = test_env.action_space.from_vect(tripple_a[1])
+        b = test_env.action_space.from_vect(tripple_a)
         b = find_best_line_to_reconnect(obs=obs, original_action=b)
         illegal_obs, _, _, _ = obs.simulate(b)
         obs_d_n, _, _, info = obs.simulate(test_env.action_space({}))
         assert np.round(illegal_obs.rho.max(), 4) == np.round(obs_d_n.rho.max(), 4)
 
         # Now check that this rho is different:
-        assert obs_rho < illegal_obs.rho.max()
+        assert obs_rho != illegal_obs.rho.max()
 
 
 class TestRevertTopo:

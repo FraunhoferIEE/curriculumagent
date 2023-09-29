@@ -166,7 +166,7 @@ class TestTutorGeneral:
             action_paths=[single_path, tripple_path], chronics_id=1, env_name_path=test_env_p, seed=42
         )
         assert out[1, 1] == 2012
-        assert out.shape == (14, 1430)
+        assert out.shape == (13, 1430)
 
     def test_multiple_actions_id_selections(self, test_env, test_action_paths):
         """

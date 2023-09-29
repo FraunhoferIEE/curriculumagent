@@ -97,15 +97,23 @@ def test_env_nonconverge():
 
 
 @pytest.fixture
-def test_action_set():
+def test_action_set(test_env):
     """
     Get all three types of actions. Tripple, Touple and Single action
     """
-    test_env_path = Path(__file__).parent / "data" / "action_spaces"
+    test_env_path = Path(__file__).parent / "data" / "action_spaces" / "single_tuple_tripple.npy"
+    actions = np.load(test_env_path)
 
-    tripple_array = np.load(test_env_path / "test_tripple.npy")
-    tuple_array = np.load(test_env_path / "test_tuple.npy")
-    single_array = np.load(test_env_path / "test_single.npy")
+    # Double check if the actions can be converted by the new environment:
+    act_single = test_env.action_space.from_vect(actions[0])
+
+    act_tuple = test_env.action_space.from_vect(actions[1])
+
+    act_tripple = test_env.action_space.from_vect(actions[2])
+
+    single_array = act_single.to_vect()
+    tuple_array = act_tuple.to_vect()
+    tripple_array = act_tripple.to_vect()
 
     return single_array, tuple_array, tripple_array
 
@@ -116,7 +124,7 @@ def test_action_paths():
     Test paths of the actions
     """
     test_data_path = Path(__file__).parent / "data"
-    single_path = test_data_path / "action_spaces" / "test_single.npy"
+    single_path = test_data_path / "action_spaces" / "single.npy"
     tuple_path = test_data_path / "action_spaces" / "test_tuple.npy"
     tripple_path = test_data_path / "action_spaces" / "test_tripple.npy"
     return single_path, tuple_path, tripple_path
