@@ -63,6 +63,7 @@ tests:
     - pip install -r requirements-dev.txt
     - pytest --cov-report html:cov_html --cov=curriculumagent tests/ --test-group-count $CI_NODE_TOTAL --test-group=$CI_NODE_INDEX
   dependencies: [ ]
+  timeout: 4h
   artifacts:
     paths:
       - cov_html/

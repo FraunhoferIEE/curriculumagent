@@ -88,7 +88,7 @@ def is_legal(action: BaseAction, obs: BaseObservation) -> bool:
                 legal_act = False
             # Check lines:
             for line in [
-                eval(key)
+                val["id"]
                 for key, val in action.as_dict()[topo_action_type][str(substation_to_operate)].items()
                 if "line" in val["type"]
             ]:
@@ -130,38 +130,39 @@ def check_convergence(action: BaseAction, obs: BaseObservation) -> bool:
         return True
 
 
-def get_from_dict_set_bus(original: dict) -> dict:
-    """Convert action from dictionary based on BaseAction.as_dict() to a dictionary that can be used
-    as input for the action space.
-
-    Args:
-        original: Action in dictionary format.
-
-    Returns:
-        Dictionary with set_bus action
-
-    """
-    dict_act = {"lines_or_id": [], "lines_ex_id": [], "loads_id": [], "generators_id": []}
-    for key, value in original.items():
-        for old, new in [
-            ("line (origin)", "lines_or_id"),
-            ("line (extremity)", "lines_ex_id"),
-            ("load", "loads_id"),
-            ("generator", "generators_id"),
-        ]:
-            if old == original[key]["type"]:
-                dict_act[new].append((int(key), int(value["new_bus"])))
-
-    return {"set_bus": dict_act}
-
+# def get_from_dict_set_bus(action_space: grid2op.Action.ActionSpace, act: grid2op.Action.BaseAction, idx: str) -> dict:
+#     """Convert action from dictionary based on BaseAction.as_dict() to a dictionary that can be used
+#     as input for the action space.
+#
+#     Args:
+#         action_space:action space of Grid2Op
+#         act: action that should be transformed/separated
+#         idx: str index of substation
+#
+#     Returns:
+#         Action
+#
+#     """
+#     # Collect effected bus ids
+#     bus_ids = [v["id"] for k, v in act.as_dict()["set_bus_vect"][idx].items()]
+#
+#     # get serialized dict
+#     ser_dict = act.as_serializable_dict()['set_bus']
+#
+#     # Generate action based on serialized action
+#     out_dict = {}
+#     for set_type in ["loads_id", "generators_id", "lines_or_id"]:
+#         sub_set = ser_dict[set_type]
+#         out_dict[set_type] = [(a, b) for (a, b) in sub_set if a in bus_ids]
+#     act_out = action_space({'set_bus': out_dict})
+#     return act_out
 
 def extract_action_set_from_actions(
         action_space: ActionSpace, action_vect: np.ndarray
 ) -> List[BaseAction]:
     """Method to separate multiple substation actions into single actions.
 
-    This method is necessary to ensure that the tuple and triple actions are in accordance to
-    the Grid2Op rules.
+    We use the decompose_as_unary_actions() method from grid2op.
 
     Args:
         action_space: action space of Grid2Op environment.
@@ -173,47 +174,18 @@ def extract_action_set_from_actions(
     """
     action_set = []
 
-    # Check if do nothing action:
+    # Check if there is an action, else do nothing action:
     if not action_vect.any():
         return [action_space({})]
 
-    # Convert into action:
+    act: grid2op.Action.BaseAction = action_space.from_vect(action_vect)
 
-    act_dict = action_space.from_vect(action_vect).as_dict()
-    if "set_bus_vect" in act_dict.keys():
-        act_t = act_dict["set_bus_vect"]
+    act_dec = act.decompose_as_unary_actions()
 
-        # Get sub-ids
-        changed_sub_ids = act_t["modif_subs_id"]
+    for v in act_dec.values():
+        action_set += v
 
-        if len(changed_sub_ids) > 1:
-            # Collect single action
-            for sub_id in changed_sub_ids:
-                sub_action = action_space(get_from_dict_set_bus(act_t[sub_id]))
-
-                action_set.append(sub_action)
-            return action_set
-        else:
-            return [action_space.from_vect(action_vect)]  #
-
-    if "change_bus_vect" in act_dict.keys():
-        # We have an old action path with only change_bus actions
-        # These actions are assumed to be unitary, thus we only return this action:
-        act_t = act_dict["change_bus_vect"]
-        if len(act_t["modif_subs_id"]) == 1:
-            return [action_space.from_vect(action_vect)]
-        else:
-            raise NotImplementedError(
-                "Multiple substations were modified in the change_bus action. This is not yet "
-                "implemented in the tuple and triple approach. Please one use set_bus actions "
-                "or unitary change_bus actions"
-            )
-    else:
-        logging.warning(
-            "Attention, a action was provided which could not be accounted for by the "
-            "extract_action_set_from_actions method."
-        )
-        return [action_space.from_vect(action_vect)]
+    return action_set
 
 
 def split_action_and_return(

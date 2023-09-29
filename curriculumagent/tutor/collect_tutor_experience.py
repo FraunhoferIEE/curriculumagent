@@ -92,6 +92,11 @@ def collect_tutor_experience_one_chronic(
 
     while not done:
         action, idx = tutor.act_with_id(obs)
+
+        if isinstance(action,grid2op.Action.BaseAction):
+            action = action.to_vect()
+
+
         if action.any() and (idx != -1):
             # Note that we exclude the TOPO Actions of the Tutor!!!
             if subset:
@@ -117,8 +122,6 @@ def collect_tutor_experience_one_chronic(
             obs, _, done, _ = env.step(act_with_line)
 
     return records
-
-    # save current records
 
 
 def generate_tutor_experience(

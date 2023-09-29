@@ -52,7 +52,8 @@ class MyAgent(BaseAgent):
             best_action_threshold: float = 0.95,
             topo: Optional[bool] = False,
             check_overload: Optional[bool] = False,
-            max_action_sim: Optional[int] = 50
+            max_action_sim: Optional[int] = 50,
+            action_space_file: Optional[str] = None
     ):
         """The new advanced agent.
 
@@ -79,11 +80,16 @@ class MyAgent(BaseAgent):
             max_action_sim: Define, how many of the actions you want to evaluate before selecting a suitable
             candidate. If you want to select all, it has to be the number of actions. For a more rapid simulation, you
             can just select fewer values.
+            action_space_file: Optional alternative to action_space_path, if you want to provide the file itself.
         """
         # Initialize a new agent.
         BaseAgent.__init__(self, action_space=action_space)
 
         # Collect action set:
+        # If action_space_file is available, we overwrite it here
+        if isinstance(action_space_file,str):
+            action_space_path = Path(action_space_file)
+
         self.actions = self.__collect_action(
             this_directory_path=this_directory_path, action_space_path=action_space_path
         )
@@ -112,18 +118,17 @@ class MyAgent(BaseAgent):
         else:
             self.topo = False
 
-    def act(
-            self, observation: grid2op.Observation.BaseObservation, reward: float, done: bool
-    ) -> grid2op.Action.BaseAction:
+    def act_with_id(
+            self, observation: grid2op.Observation.BaseObservation) -> grid2op.Action.BaseAction:
         """Method of the agent to act.
 
         When the function selects a tuple action or triple action, the next steps are predetermined as
         well,i.e., all actions are returned sequentially.
 
+        Note: this method was primarily written to plug it into the generate experience methode
+
         Args:
             observation: Grid2Op Observation
-            reward: Reward of the previous action
-            done: Whether the agent is done
 
         Returns: A suitable Grid2Op action
 
@@ -137,7 +142,7 @@ class MyAgent(BaseAgent):
                 next_action = next(self.next_actions)
                 next_action = find_best_line_to_reconnect(obs=observation, original_action=next_action)
                 if is_legal(next_action, observation):
-                    return next_action
+                    return next_action, -1
             except StopIteration:
                 self.next_actions = None
 
@@ -158,7 +163,7 @@ class MyAgent(BaseAgent):
                 default_action = find_best_line_to_reconnect(obs=observation,
                                                              original_action=default_action)
 
-            return default_action
+            return default_action, -1
 
         # Now, case dangerous:
         min_rho = observation.rho.max()
@@ -198,7 +203,30 @@ class MyAgent(BaseAgent):
 
         else:
             next_action = find_best_line_to_reconnect(obs=observation, original_action=self.action_space({}))
-        return next_action
+            idx_chosen = -1
+
+        return next_action,idx_chosen
+
+    def act(
+            self, observation: grid2op.Observation.BaseObservation, reward: float, done: bool
+    ) -> grid2op.Action.BaseAction:
+        """Method of the agent to act.
+
+        When the function selects a tuple action or triple action, the next steps are predetermined as
+        well,i.e., all actions are returned sequentially.
+
+        Args:
+            observation: Grid2Op Observation
+            reward: Reward of the previous action
+            done: Whether the agent is done
+
+        Returns: A suitable Grid2Op action
+
+        """
+        # We do not need done or the reward!
+
+        action, _ = self.act_with_id(observation)
+        return action
 
     def reset(self, obs: grid2op.Observation.BaseObservation):
         """ Resetting the agent.
@@ -224,11 +252,11 @@ class MyAgent(BaseAgent):
         actions = None
         if isinstance(action_space_path, Path):
             if action_space_path.is_file():
-                logging.info(f"Action_space_path {action_space_path} is a file and will be loaded.")
+                logging.info(f"action_space_path {action_space_path} is a file and will be loaded.")
                 actions = np.load(str(action_space_path))
             elif action_space_path.is_dir():
                 logging.info(
-                    f"Action_space_path {action_space_path} is a path. All available action files "
+                    f"action_space_path {action_space_path} is a path. All available action files "
                     f" will be loaded."
                 )
                 all_action_files = [
@@ -246,7 +274,7 @@ class MyAgent(BaseAgent):
                 actions = np.concatenate(loaded_files, axis=0)
 
         elif isinstance(action_space_path, list):
-            logging.info(f"Action_space_path {action_space_path} is a list containing multiple actions.")
+            logging.info(f"action_space_path {action_space_path} is a list containing multiple actions.")
             for act_path in action_space_path:
                 if isinstance(act_path, Path):
                     assert act_path.is_file()
