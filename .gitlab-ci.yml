@@ -6,8 +6,8 @@ image: python:3.10
 # Change runner accordingly.
 default:
   tags:
-    - iee_oe224
-    #    - asprunner
+    #- iee_oe224
+    - asprunner
     #- intranet
     #    - srmuc01
 
