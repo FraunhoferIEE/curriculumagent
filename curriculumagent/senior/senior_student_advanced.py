@@ -11,7 +11,7 @@ from ray import tune
 from ray.rllib.models import ModelCatalog
 from ray.tune.schedulers import PopulationBasedTraining
 from curriculumagent.senior.rllib_execution.senior_env_rllib import SeniorEnvRllib
-from curriculumagent.senior.rllib_execution.senior_model_rllib import Grid2OpCustomModel, AdvancedCustomModel
+from curriculumagent.senior.rllib_execution.senior_model_rllib import Grid2OpCustomModelTF, AdvancedCustomModel
 
 
 def train_senior():
@@ -42,7 +42,7 @@ def train_senior():
         "filtered_obs": True,
     }
     model_config = {"path_to_junior": junior_model}
-    ModelCatalog.register_custom_model("Senior", Grid2OpCustomModel)
+    ModelCatalog.register_custom_model("Senior", Grid2OpCustomModelTF)
 
     # Set population based training
     pbt = PopulationBasedTraining(

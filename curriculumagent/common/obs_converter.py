@@ -1,10 +1,10 @@
 """This file contains features/mappings/extractions for training."""
 import logging
+import warnings
 from typing import Optional
 
 import grid2op
 import numpy as np
-
 
 def obs_to_vect(obs: grid2op.Observation.BaseObservation, connectivity: bool = False) -> np.ndarray:
     """Method to convert only a subset of the observation to a vector.

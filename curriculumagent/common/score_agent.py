@@ -18,10 +18,9 @@ import tensorflow as tf
 from grid2op.Agent import BaseAgent
 from grid2op.Environment import BaseEnv
 from grid2op.Episode import EpisodeData
-from grid2op.Reward import L2RPNWCCI2022ScoreFun
+from grid2op.Reward import L2RPNWCCI2022ScoreFun, L2RPNSandBoxScore
 from grid2op.dtypes import dt_int
 from grid2op.utils import ScoreL2RPN2020, EpisodeStatistics
-from matplotlib.axes._base import _AxesBase
 from ubelt import Timer
 
 env_name = "l2rpn_neurips_2020_track1"
@@ -104,7 +103,7 @@ def render_report(report_path: Path, report: AgentReport, comparison_reports: Li
         f.write(f"\n\n ## Metadata: \n\n Grid2Op Version: {report.g2op_version}")
 
 
-def plot_bar_comparison(reports: List[AgentReport], metric_key: str) -> _AxesBase:
+def plot_bar_comparison(reports: List[AgentReport], metric_key: str) :
     """Create Bar Plot of the performance.
 
     Args:
@@ -128,15 +127,13 @@ def plot_bar_comparison(reports: List[AgentReport], metric_key: str) -> _AxesBas
             )
     return axes
 
-
 class ScoreL2RPN2020WithNames(ScoreL2RPN2020):
     """Extension of ScoreL2RPN2020 class to return scenario names as well.
 
     """
-
     def get(
-            self, agent: BaseAgent, path_save: Optional[str] = None, nb_process: int = 1
-    ) -> Tuple[List[float], List[int], List[int], List[str]]:
+            self, agent: BaseAgent, path_save: Optional[str] = None, nb_process: int = 1,
+            seed_name:str = None) -> Tuple[List[float], List[int], List[int], List[str]]:
         """Get the score of the agent depending on what has been computed.
 
         Args:
@@ -149,6 +146,8 @@ class ScoreL2RPN2020WithNames(ScoreL2RPN2020):
             ts_survived: List of the step number your agent successfully managed for each scenario.
             total_ts: Total step number for each scenario.
             scenario_names: Names for each scenario executed.
+            seed_name: When running multiple seeds, it is possilbe to specify the name in order to save
+            multiple do_nothing reports, depending on the seed of the env.
         """
         if path_save is not None:
             need_delete = False
@@ -160,7 +159,10 @@ class ScoreL2RPN2020WithNames(ScoreL2RPN2020):
 
         if self.verbose >= 1:
             print("Starts the evaluation of the agent")
-        EpisodeStatistics.run_env(
+
+        es_instance = EpisodeStatistics(self.env, name_stats=seed_name)
+
+        es_instance.run_env(
             self.env,
             env_seeds=self.env_seeds,
             agent_seeds=self.agent_seeds,
@@ -311,7 +313,7 @@ def score_agent(
 
         log_path.mkdir(exist_ok=True, parents=True)
         all_scores, ts_survived, total_ts, episode_names = my_score.get(
-            agent, nb_process=nb_process, path_save=str(log_path)
+            agent, nb_process=nb_process, path_save=str(log_path),seed_name=str(seed)
         )
 
     score_data = {
@@ -372,7 +374,7 @@ def load_or_run(
         name = agent.__class__.__name__
     output_path.mkdir(exist_ok=True, parents=True)
     report_path = output_path / Path(f"{name}_report_data.pkl")
-    if report_path.exists() and not overwrite:
+    if report_path.exists() and not overwrite and not reinit:
         logging.info(f"Using cached results from {report_path}")
         report = AgentReport.load(report_path)
         return report

@@ -6,8 +6,8 @@ image: python:3.10
 # Change runner accordingly.
 default:
   tags:
-    #- iee_oe224
     - asprunner
+    #- iee_oe224
     #- intranet
     #    - srmuc01
 
@@ -61,6 +61,7 @@ tests:
     - pip install pytest-cov pytest-benchmark
     - pip install pytest-test-groups
     - pip install -r requirements-dev.txt
+    - pip install setuptools==69.5.1
     - pytest --cov-report html:cov_html --cov=curriculumagent tests/ --test-group-count $CI_NODE_TOTAL --test-group=$CI_NODE_INDEX
   dependencies: [ ]
   timeout: 4h

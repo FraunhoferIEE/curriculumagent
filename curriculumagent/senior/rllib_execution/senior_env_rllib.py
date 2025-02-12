@@ -17,27 +17,32 @@ from ray._raylet import ObjectRef
 from sklearn.base import BaseEstimator
 
 from curriculumagent.common.obs_converter import obs_to_vect
-from curriculumagent.common.utilities import find_best_line_to_reconnect, split_and_execute_action, revert_topo
+from curriculumagent.common.utilities import find_best_line_to_reconnect, split_and_execute_action, revert_topo, \
+    set_bus_from_topo_vect
 from curriculumagent.senior.rllib_execution.alternative_rewards import PPO_Reward
 
 
 class RLlibEnvConfig(TypedDict):
-    """TypeDict Class.
+    """
+    A TypedDict class representing the configuration parameters for an RLlib environment in the Grid2Op framework.
 
-     Attributes:
-        action_space_path: Either path to the actions or a list containing mutliple actions.
-        env_path: Path of the Grid2Op environment
-        action_threshold: Between 0 and 1.
-        subset: Should the obs.to_vect be filtered similar to the original Agent. If True,
-                the obs.to_vect is filtered based on predefined values. If False, all values are considered.
-                Alternatively, one can submit the once own values.
-                testing: Indicator, whether the underlying Grid2op Env should be started in testing mode or not
-        scaler: Optional Scaler of Sklearn Model. Either a Sklearn Scaler or its ray ID, if the scaler is saved via
-                ray.put(). If scaler is provided, the environment will scale the observations based on
-                scaler.transform().
-        env_kwargs: Optional additional arguments for the Grid2Op environment that should be used when making the
-        environment.
+    This configuration is used to initialize and configure the environment, including options for action spaces,
+    scaling, and rewards.
 
+    Attributes:
+        action_space_path (Union[Path, List[Path]]): Either a path to the action space file or a list containing
+            multiple action space files.
+        env_path (Union[str, Path]): Path to the Grid2Op environment.
+        action_threshold (float): A threshold value between 0 and 1 that defines the cutoff for selecting actions.
+        filtered_obs (Union[bool, List]): If True, the `obs.to_vect` is filtered based on predefined values.
+            If False, all values are considered. Alternatively, a custom subset of values can be provided.
+        scaler (Optional[Union[ObjectRef, BaseEstimator, str]]): An optional scaler for normalizing observations.
+            This can be a Sklearn scaler, a ray object reference if saved using `ray.put()`, or a string ID.
+        topo (Optional[bool]): Whether to revert the topology in the environment or not.
+        alternative_rew (Optional[grid2op.Reward.BaseReward]): An optional alternative reward function for the environment.
+        env_kwargs (Optional[dict]): Additional arguments to be passed to the Grid2Op environment.
+        seed (Optional[int]): Seed value for reproducibility. If provided, ensures the same environment conditions
+            are reproducible.
     """
     action_space_path: Union[Path, List[Path]]
     env_path: Union[str, Path]
@@ -47,51 +52,60 @@ class RLlibEnvConfig(TypedDict):
     topo: Optional[bool]
     alternative_rew: Optional[grid2op.Reward.BaseReward]
     env_kwargs: Optional[dict] = {}
+    seed: Optional[int]
 
 
 class SeniorEnvRllib(gym.Env):
-    """Environment class, in which the Grid2Op Backend is combined with the actions of the tutor agent.
-    The environment can then be used in the RLlib framework for training.
+    """
+    A custom environment class that combines the Grid2Op backend with the actions of the tutor agent for use
+    in the RLlib framework.
 
-    There is a difference between this environment and the GymEnv of grid2op.gym_compat, because we
-    still access the Grid2Op Environment.
+    This environment interacts with the Grid2Op environment, making it suitable for RLlib-based training.
+    Unlike the `GymEnv` provided by `grid2op.gym_compat`, this environment maintains direct access to the Grid2Op
+    environment, offering more flexibility in interaction.
 
-    Note: With the Update to Ray>=2.4 the environment is now based on the gymnasium package and
-        not gym anymore. Thus, small changes are necessary.
-
+    Note:
+        With the update to Ray>=2.4, the environment now uses the `gymnasium` package instead of `gym`. This change
+        requires small modifications to the environment's structure and behavior.
 
     """
 
     def __init__(self, config: RLlibEnvConfig,
                  testing: bool = False):
-        """Initialization of Environment with Grid2Op.
+        """
+        Initializes the Senior environment with the Grid2Op backend and RLlib-compatible settings.
 
-        If possible, the lightsim2grid backend is used. Further, we define based on the Gym format
-        the environment.
+        This method sets up the environment using a configuration dictionary and, if possible, uses the
+        `lightsim2grid` backend. The environment is structured based on the Gym format.
 
         Args:
-            config: RllibEnvConfig File, containing the following keys,value pairs:
-                action_space_path: Either path to the actions or a list containing mutliple actions.
-                env_path: Path of the Grid2Op environment
-                action_threshold: Threshold between 0 and 1.
-                subset: Should the obs.to_vect be filtered similar to the original Agent. If True,
-                        the obs.to_vect is filtered based on predefined values by the obs_to_vect method.
-                        If False, all values are considered. Alternatively, one can submit the own values.
-                        testing: Indicator, whether the underlying Grid2op Env should be started in testing mode or not
-                scaler: Optional Scaler of Sklearn Model. Either a Sklearn Scaler or its ray ID, if the scaler is saved
-                        ray.put(). If scaler is provided, the environment will scale the observations based on
-                        scaler.transform().
-                alternative_rew: If wanted, you can supply an alternative reward for the grid2op Environment.
+            config (RLlibEnvConfig): The configuration dictionary containing the following keys and values:
+                action_space_path (Union[Path, List[Path]]): Path to the action space file or a list of action files.
+                env_path (Union[str, Path]): Path to the Grid2Op environment.
+                action_threshold (float): A threshold value between 0 and 1 for selecting actions.
+                subset (Union[bool, List]): If True, filters the `obs.to_vect` based on predefined values. If False,
+                    all values are considered. Alternatively, custom values can be provided.
+                testing (bool): Indicates whether the Grid2Op environment should be started in testing mode.
+                scaler (Optional[Union[ObjectRef, BaseEstimator, str]]): Optional scaler for normalizing observations.
+                alternative_rew (Optional[grid2op.Reward.BaseReward]): An alternative reward function for the environment.
+                env_kwargs (Optional[dict]): Additional keyword arguments for configuring the Grid2Op environment.
+            testing (bool, optional): If True, initializes the environment in testing mode. Defaults to False.
 
         Returns:
             None.
-
         """
+        seed = config.get("seed",np.random.choice(10000))
+        logging.info(f"Setting seed {seed}")
+        self.seed = seed
+
+        np.random.seed(seed)
+
+
         # Check if subsample of Obs:
         action_space_path = config["action_space_path"]
-        action_threshold = config["action_threshold"]
+        action_threshold = config.get("action_threshold",1.0)
 
-        self.subset = config["subset"]
+        self.subset = config.get("subset",False)
 
         data_path = str(config["env_path"])
         env_kwargs = config.get("env_kwargs", {})
@@ -104,12 +118,9 @@ class SeniorEnvRllib(gym.Env):
                                    reward_class=PPO_Reward, test=True, **env_kwargs)
                 logging.info("Test flag was set to true. Init Env in testing mode.")
             else:
-                if "alternative_rew" in config.keys():
-                    env = grid2op.make(dataset=data_path, backend=backend,
-                                       reward_class=config["alternative_rew"], test=False, **env_kwargs)
-                else:
-                    env = grid2op.make(dataset=data_path, backend=backend,
-                                       reward_class=PPO_Reward, test=False, **env_kwargs)
+                reward = config.get("alternative_rew",PPO_Reward)
+                env = grid2op.make(dataset=data_path, backend=backend,
+                                       reward_class=reward, test=False, **env_kwargs)
                 logging.info("Init of Grid2Op Env works.")
             self.single_env = env.copy()
         except UnknownEnv as test_env:
@@ -117,6 +128,7 @@ class SeniorEnvRllib(gym.Env):
             self.single_env = grid2op.make(dataset=data_path, test=True,
                                            backend=LightSimBackend(), reward_class=PPO_Reward)
 
+        self.single_env.seed(self.seed)
         self.single_env.chronics_handler.shuffle(
             shuffler=lambda x: x[np.random.choice(len(x), size=len(x), replace=False)])
         # Create multiple environments:
@@ -167,7 +179,13 @@ class SeniorEnvRllib(gym.Env):
                 with open(self.scaler, "rb") as fp:
                     self.scaler = pickle.load(fp)
 
+        # Should we revert the topology ?
         self.topo = config.get("topo", False)
+
+        # Check whether the actions are grid2op.Action.Baseactions in vector format or whether they are
+        # actually topologies:
+        topology_actions = not len(self.single_env.action_space().to_vect()) == self.actions.shape[1]
+        self.topology_actions = config.get("topology_actions", topology_actions)
 
         # Initialize further arguments:
         assert 0.0 < action_threshold <= 1.0
@@ -181,19 +199,21 @@ class SeniorEnvRllib(gym.Env):
         self.info: Dict = {}
         self.done = self.single_env.done
         # Added for gymnasium
-        self.truncated, self.terminated = self.__check_terminated_truncated()
+        self.truncated, self.terminated = self.check_terminated_truncated()
 
     def run_next_action(self) -> np.ndarray:
-        """Run the environment until an action by the agent is required.
+        """
+        Runs the environment until an action by the agent is required.
 
-        In this function, the Grid2Op Environment will run until it requires help
-        from the agent. Then it will return the observation and wait for action.
+        In this function, the Grid2Op environment runs without agent intervention until the environment requires
+        an action. The cumulative reward is calculated during this process, and the observation is returned when
+        the agent is needed to take action.
 
         Returns:
-            Observation vector.
-
+            np.ndarray: The observation vector after the environment requires an action from the agent.
         """
         # init values
+        self.passiv_reward = 0
         continue_running = True
         cur_obs = self.single_env.get_obs()
         cumulated_rew = 0
@@ -216,16 +236,12 @@ class SeniorEnvRllib(gym.Env):
                 self.step_in_env += 1
 
                 if self.single_env.done:
-                    if 'GAME OVER' in str(self.info['exception']):
-                        cumulated_rew += -300
-                    else:
-                        cumulated_rew += 500
                     continue_running = False
 
             else:
                 continue_running = False
         self.obs_grid2op = cur_obs
-        self.passiv_reward += cumulated_rew
+        self.passiv_reward = cumulated_rew
 
         # Select subset if wanted
         if isinstance(self.subset, list):
@@ -245,37 +261,44 @@ class SeniorEnvRllib(gym.Env):
         return obs_rl
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, Union[float, int], bool, bool, dict]:
-        """Conduct the action of the agent.
+        """
+        Executes the agent's action in the environment and computes the reward.
 
-        This method does not only run the action of the agent but additionally accumulates the
-        reward for the do-nothing agent AFTER the action of the agent. Thus, if the action "saves" a
-        lot of steps, the agent receives a handsome reward.
-
-        Note: This method checks, whether the action is a tuple or a triple action. If the action
-        requires multiple steps indeed, then the action will be executed sequentially, i.e., 2 or 3 steps
-        in the Grid2Op Environment.
-
-        With the update to gymnasium the output is a little bit different
+        This method performs the action specified by the agent and accumulates rewards for passive actions taken
+        by the environment. It checks if multiple steps are required and handles the transition based on the
+        Grid2Op environment's conditions. The action can be executed sequentially if necessary.
 
         Args:
-            action: ID of the action within the action set.
+            action (np.ndarray): The action to execute, provided by the agent.
 
         Returns:
-            The observation as np.ndarray, the reward, the info if it is terminated, the boolean if truncated
-            and the info, which is default.
-
+            Tuple[np.ndarray, Union[float, int], bool, bool, dict]: A tuple containing the following:
+                - Observation vector as np.ndarray.
+                - The accumulated reward as either float or int.
+                - A boolean indicating if the episode is terminated.
+                - A boolean indicating if the episode is truncated.
+                - A dictionary containing additional environment info.
         """
         # For some reason sometime the environment is done but ray does not reinit it
         if self.single_env.done:
             logging.info("The Grid2Op Environment seems to be not initialized. We just return the last"
                          "observation and do not run anything")
             self.done = True
-            self.truncated, self.terminated = self.__check_terminated_truncated()
+            self.truncated, self.terminated = self.check_terminated_truncated()
 
             return self.obs_rl, 0.0, self.terminated, self.truncated, self.info
 
+        # Here we have the topology grid:
+        if self.topology_actions:
+            topo_vect = self.single_env.get_obs().topo_vect
+            new_topology = self.actions[action]
+            transf_act = set_bus_from_topo_vect(topo_vect, new_topology, self.single_env.action_space).to_vect()
+
+        else:
+            transf_act = self.actions[action]
+
         cur_obs, reward, self.done, self.info = split_and_execute_action(env=self.single_env,
-                                                                         action_vect=self.actions[action])
+                                                                         action_vect=transf_act)
 
         # get action:
         self.step_in_env += 1
@@ -301,38 +324,47 @@ class SeniorEnvRllib(gym.Env):
             self.obs_rl = self.run_next_action()
             reward += self.passiv_reward
 
+
         self.done = self.single_env.done
 
-        # We add the passive reward to the overall reward
-        self.reward = reward
-
         # Now check for Truncation
-        self.truncated, self.terminated = self.__check_terminated_truncated()
+        self.truncated, self.terminated = self.check_terminated_truncated()
+
+        # We add the passive reward to the overall reward and scale it !
+        game_over = 0
+        if self.truncated:
+            game_over = -300
+        if self.terminated:
+            game_over = 500
+
+        self.reward = reward
 
         return self.obs_rl, self.reward, self.terminated, self.truncated, self.info
 
     def reset(self, seed: Optional[int] = None, options: Optional[Dict[str, int]] = None) -> Tuple[np.ndarray, dict]:
-        """ Resetting the environment.
+        """
+        Resets the environment to its initial state.
+
+        This method resets the environment, optionally using a specific seed or resetting to a specific chronic
+        ID provided in the options. It ensures the environment is ready for the agent's intervention.
 
         Args:
-            seed: Optional seed that gets passed to the environment.
-            options: Optional id for the Grid2Op Environment. When you want to reset to a specific chronic
-            reset the env with a dictionary and the key "id". As example {"id": 42}.
+            seed (Optional[int]): An optional seed value for resetting the environment.
+            options (Optional[Dict[str, int]]): Optional dictionary to reset to a specific chronic ID, e.g.,
+                {"id": 42}.
 
         Returns:
-            Tuple with the observation and the info statement
-
+            Tuple[np.ndarray, dict]: A tuple containing the following:
+                - The observation vector after resetting the environment.
+                - A dictionary with additional information about the environment.
         """
-        try:
-            if seed:
-                self.single_env.seed(seed)
-            if isinstance(options, dict):
-                if "id" in options.keys():
-                    self.single_env.set_id(options)
-        except Exception as e:
-            logging.warning(f"The ID did not work with the environment and raised {e}. Reset without setting ID")
+        if seed:
+            self.single_env.seed(seed)
+        if isinstance(options, dict):
+            id = options.get("id", None)
+            if id:
+                self.single_env.set_id(id)
 
-        # Reset environment and run the Grid2Op Env
         self.done = True
         while self.done:
             # We have to iterate over the environment, because it can happen that the environment
@@ -345,26 +377,36 @@ class SeniorEnvRllib(gym.Env):
             if not self.single_env.done:
                 self.done = False
 
-        self.truncated, self.terminated = self.__check_terminated_truncated()
+        self.truncated, self.terminated = self.check_terminated_truncated()
 
         return self.obs_rl, self.info
 
     def render(self, mode='human') -> None:
-        """Required for GYM Environment. However, we do not change anything.
+        """
+        Renders the environment (required by Gym).
+
+        This method is a placeholder for rendering the environment, which is required by the Gym interface.
+        No changes are made by this method.
 
         Args:
-            mode: String.
+            mode (str): A string representing the rendering mode. Defaults to 'human'.
 
         Returns:
-             None.
-
+            None.
         """
 
-    def __check_terminated_truncated(self) -> Tuple[bool, bool]:
-        """ Check the env for terminated and truncated
+    def check_terminated_truncated(self) -> Tuple[bool, bool]:
+        """
+        Checks whether the environment is terminated or truncated.
+
+        This method checks if the current episode is terminated or truncated based on the environment's status.
+        Termination happens when the maximum episode duration is reached, while truncation occurs when the environment
+        is finished early.
 
         Returns:
-
+            Tuple[bool, bool]: A tuple containing two booleans:
+                - The first boolean indicates if the episode is truncated.
+                - The second boolean indicates if the episode is terminated.
         """
 
         if self.done:

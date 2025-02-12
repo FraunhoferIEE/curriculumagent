@@ -14,10 +14,13 @@ from typing import Optional, Union, List
 import grid2op
 import numpy as np
 import tensorflow as tf
+import torch
 from grid2op.Agent import BaseAgent
 from sklearn.base import BaseEstimator
 from tensorflow.keras.models import Model
-from tensorflow.python.training.tracking.tracking import AutoTrackable
+
+from tests.data.training_data_track1.config import config
+from ..junior.junior_student_pytorch import Junior_PtL
 
 try:
     # Import if the agent is coppied into the submission folder
@@ -53,12 +56,13 @@ class MyAgent(BaseAgent):
             topo: Optional[bool] = False,
             check_overload: Optional[bool] = False,
             max_action_sim: Optional[int] = 50,
-            action_space_file: Optional[str] = None
+            action_space_file: Optional[str] = None,
+            run_with_tf: bool = True,
     ):
         """The new advanced agent.
 
         In contrast to the original agent, this agent enables the implementation of tuple and triple actions,
-        as well as use either a keras model or a model from rllib which is a AutoTrackable model.
+        as well as use either a keras model.
 
         Next to the difference in the models and actions, this agent also has the ability to transform the
         observations based on a provided scaler and/or filter them accordingly.
@@ -81,13 +85,14 @@ class MyAgent(BaseAgent):
             candidate. If you want to select all, it has to be the number of actions. For a more rapid simulation, you
             can just select fewer values.
             action_space_file: Optional alternative to action_space_path, if you want to provide the file itself.
+            run_with_tf: Flag to determine if the agent should use TensorFlow (True) or PyTorch (False).
         """
         # Initialize a new agent.
         BaseAgent.__init__(self, action_space=action_space)
 
         # Collect action set:
         # If action_space_file is available, we overwrite it here
-        if isinstance(action_space_file,str):
+        if isinstance(action_space_file,(str,Path)):
             action_space_path = Path(action_space_file)
 
         self.actions = self.__collect_action(
@@ -96,16 +101,36 @@ class MyAgent(BaseAgent):
 
         self.subset = subset
         self.check_overload = check_overload
+        self.run_with_tf = run_with_tf
 
-        # Load Model:
-        try:
-            # Could both be Junior or Senior model
-            self.model: Model = tf.keras.models.load_model(model_path, compile=False)
-            self.model.compile()
+        # Initialize model based on the framework
+        if self.run_with_tf:
+            # TensorFlow model loading
+            try:
+                self.model = tf.keras.models.load_model(model_path, compile=False)
+                self.model.compile()
+                logging.info(f"Successfully loaded TensorFlow model from {model_path}.")
+            except (IndexError, AttributeError) as e:
+                raise AttributeError(f"You are trying to load an old TensorFlow model that is not supported: {e}")
+            except Exception as e:
+                raise ValueError(f"Error loading TensorFlow model: {e}")
+        else:
+            # PyTorch model loading
+            try:
+                checkpoint = torch.load(model_path)
+                if isinstance(checkpoint, dict):
+                    # "Loading Junior model"
+                    model = Junior_PtL.load_from_checkpoint(model_path)
+                    self.model = model
+                else:
+                    # "Loading Senior model"
+                    print("Loading Senior model")
+                    self.model=checkpoint
 
-        except (IndexError, AttributeError):
-            # Loader of older model:
-            self.model: AutoTrackable = tf.saved_model.load(str(model_path))
+                self.model.eval()  # Set model to evaluation mode
+                logging.info(f"Successfully loaded PyTorch model from {model_path}.")
+            except Exception as e:
+                raise ValueError(f"Error loading PyTorch model: {e}")
 
         self.scaler = scaler
         self.recovery_stack = []
@@ -154,7 +179,8 @@ class MyAgent(BaseAgent):
         # case: secure with low threshold
         if observation.rho.max() < self.best_action_threshold:  # fixed threshold
             if self.topo:
-                action_array = revert_topo(self.action_space, observation)
+                action_array = revert_topo(self.action_space, observation,
+                                           rho_limit=0.8)
                 default_action = self.action_space.from_vect(action_array)
                 default_action = find_best_line_to_reconnect(obs=observation,
                                                              original_action=default_action)
@@ -207,9 +233,8 @@ class MyAgent(BaseAgent):
 
         return next_action,idx_chosen
 
-    def act(
-            self, observation: grid2op.Observation.BaseObservation, reward: float, done: bool
-    ) -> grid2op.Action.BaseAction:
+    def act( self, observation: grid2op.Observation.BaseObservation, reward: float, done: bool)\
+            -> grid2op.Action.BaseAction:
         """Method of the agent to act.
 
         When the function selects a tuple action or triple action, the next steps are predetermined as
@@ -299,13 +324,17 @@ class MyAgent(BaseAgent):
         Returns: action
 
         """
+        if self.run_with_tf:
+            if isinstance(self.model, Model):
+                # Newer Junior or Senior model
+                sorted_actions = self.__get_keras_actions_model(obs=obs)
 
-        if isinstance(self.model, Model):
-            # Newer Junior or Senior model
-            sorted_actions = self.__get_keras_actions_model(obs=obs)
+            else:
+                # Older Model from Ray<2.4
+                sorted_actions = self.__get_tf_actions(obs=obs)
         else:
-            # Older Model from Ray<2.4
-            sorted_actions = self.__get_tf_actions(obs=obs)
+            sorted_actions = self.__get_torch_actions_model(obs=obs)
+
         return sorted_actions
 
     def __get_keras_actions_model(self, obs: grid2op.Observation.BaseObservation):
@@ -332,58 +361,138 @@ class MyAgent(BaseAgent):
 
         if isinstance(self.model, tf.keras.models.Sequential):
             # Junior Model: Sequential model
-            action_probability = self.model.predict(model_input)
+            action_probability = self.model.predict(model_input, verbose=0)
         else:
             # Senior Model: tensorflow functional model:
-            action_probability_pre_softmax, _ = self.model.predict(model_input)
+            action_probability_pre_softmax, _ = self.model.predict(model_input, verbose=0)
             action_probability = tf.nn.softmax(action_probability_pre_softmax).numpy().reshape(-1)
         sorted_actions = action_probability.argsort()[::-1]
         return sorted_actions.reshape(-1)
 
+
     def __get_tf_actions(self, obs: grid2op.Observation.BaseObservation):
-        """Method to get the tf actions:
+            """Method to get the tf actions:
 
-        Args:
-            obs: Current observations
+            Args:
+                obs: Current observations
 
-        Returns: sorted numpy array with actions
+            Returns: sorted numpy array with actions
 
-        """
-        # Select subset if wanted
-        if isinstance(self.subset, list):
-            model_input = obs.to_vect()[self.subset]
-        elif self.subset:
-            model_input = obs_to_vect(obs, False)
-        else:
-            model_input = obs.to_vect()
+            """
+            # Select subset if wanted
+            if isinstance(self.subset, list):
+                model_input = obs.to_vect()[self.subset]
+            elif self.subset:
+                model_input = obs_to_vect(obs, False)
+            else:
+                model_input = obs.to_vect()
 
-        if self.scaler:
-            model_input = self.scaler.transform(model_input.reshape(1, -1)).reshape(
-                -1,
-            )
-
-        f = self.model.signatures["serving_default"]
-        out = f(
-            observations=tf.convert_to_tensor(model_input.reshape(1, -1)),
-            timestep=tf.convert_to_tensor(0, dtype=tf.int64),
-            is_training=tf.convert_to_tensor(False),
-        )
-
-        # Collect the softmax over all actions
-        try:
-            prob_of_action = (
-                tf.nn.softmax(out["action_dist_inputs"])
-                .numpy()
-                .reshape(
+            if self.scaler:
+                model_input = self.scaler.transform(model_input.reshape(1, -1)).reshape(
                     -1,
                 )
-            )
-        except AttributeError:
-            poa = tf.nn.softmax(out["action_dist_inputs"])
-            prob_of_action = poa.eval(session=tf.compat.v1.Session()).reshape(-1, )
 
-        sorted_actions = prob_of_action.argsort()[::-1]
-        return sorted_actions
+            f = self.model.signatures["serving_default"]
+            out = f(
+                observations=tf.convert_to_tensor(model_input.reshape(1, -1)),
+                timestep=tf.convert_to_tensor(0, dtype=tf.int64),
+                is_training=tf.convert_to_tensor(False),
+            )
+
+            # Collect the softmax over all actions
+            try:
+                prob_of_action = (
+                    tf.nn.softmax(out["action_dist_inputs"])
+                    .numpy()
+                    .reshape(
+                        -1,
+                    )
+                )
+            except AttributeError:
+                poa = tf.nn.softmax(out["action_dist_inputs"])
+                prob_of_action = poa.eval(session=tf.compat.v1.Session()).reshape(-1, )
+
+            sorted_actions = prob_of_action.argsort()[::-1]
+            return sorted_actions
+
+
+    def __get_torch_actions_model(self, obs: grid2op.Observation.BaseObservation):
+            """Method to get the torch actions (for PyTorch model).
+
+            Args:
+                obs: Current observations
+
+            Returns: numpy array with the sorted actions
+
+            """
+            # Select subset if wanted
+            if isinstance(self.subset, list):
+                model_input = obs.to_vect()[self.subset]
+            elif self.subset:
+                model_input = obs_to_vect(obs, False)
+            else:
+                model_input = obs.to_vect()
+
+            if self.scaler:
+                model_input = self.scaler.transform(model_input.reshape(1, -1))
+
+            model_input = model_input.reshape((1, -1))
+            # Convert to PyTorch tensor
+            model_input = torch.tensor(model_input, dtype=torch.float32)
+            with torch.no_grad():
+                output = self.model(model_input)
+                action_probabilities = torch.softmax(output, dim=1).numpy().reshape(-1) #need to be checked
+
+            sorted_actions = action_probabilities.argsort()[::-1]
+            return sorted_actions
+
+    def __generate_config(self, checkpoint):
+        """
+        Generate the configuration dictionary from a checkpoint dict.
+
+        Args:
+            checkpoint (dict): The checkpoint dictionary containing 'state_dict' and 'model_config'.
+
+        Returns:
+            dict: A dictionary containing the 'custom_config' with activation, initializer, and layer sizes.
+        """
+        # Initialize custom_config dictionary
+        custom_config = {}
+
+        # Extract 'model_config' from the checkpoint
+        model_config = checkpoint.get('model_config', None)
+
+        # Check if 'model_config' is not empty and extract values
+        if model_config:
+            activation = model_config.get('activation', 'relu')
+            initializer = model_config.get('initializer', 'O')
+            layer1 = model_config.get('layer1', 1000)
+            layer2 = model_config.get('layer2', 1000)
+            layer3 = model_config.get('layer3', 1000)
+            layer4 = model_config.get('layer4', 1000)
+        else:
+            # Use default values if 'model_config' is empty
+            activation = 'relu'
+            initializer = 'O'
+            layer1 = 1000
+            layer2 = 1000
+            layer3 = 1000
+            layer4 = 1000
+
+        custom_config['activation'] = activation
+        custom_config['initializer'] = initializer
+        custom_config['layer1'] = layer1
+        custom_config['layer2'] = layer2
+        custom_config['layer3'] = layer3
+        custom_config['layer4'] = layer4
+
+        # Extract the 'state_dict' from the checkpoint
+        state_dict = checkpoint.get('state_dict', {})
+        if not state_dict:
+            raise ValueError("The checkpoint does not contain a 'state_dict'.")
+
+        return {'custom_config': custom_config}
+
 
 
 def make_agent(env, this_directory_path):

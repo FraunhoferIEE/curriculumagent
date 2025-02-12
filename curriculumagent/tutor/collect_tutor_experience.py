@@ -93,11 +93,11 @@ def collect_tutor_experience_one_chronic(
     while not done:
         action, idx = tutor.act_with_id(obs)
 
-        if isinstance(action,grid2op.Action.BaseAction):
-            action = action.to_vect()
+        if isinstance(action,np.ndarray):
+            action:grid2op.Action.BaseAction = tutor.action_space.from_vect(action)
 
+        if action.as_dict()!={} and (idx != -1):
 
-        if action.any() and (idx != -1):
             # Note that we exclude the TOPO Actions of the Tutor!!!
             if subset:
                 vect_obs = obs_to_vect(obs)
@@ -112,14 +112,18 @@ def collect_tutor_experience_one_chronic(
 
             # Execute Action:
             # This method does up to three steps and returns the output
-            obs, _, done, _ = split_and_execute_action(env=env, action_vect=action)
-            step = env.nb_time_step
-            logging.info(f"game over at step-{step}")
+            obs, _, done, _ = split_and_execute_action(env=env, action_vect=action.to_vect())
+
+
 
         else:
             # Use Do-Nothing Action
             act_with_line = find_best_line_to_reconnect(obs, env.action_space({}))
             obs, _, done, _ = env.step(act_with_line)
+
+        step = env.nb_time_step
+
+    logging.info(f"game over at step-{step}")
 
     return records
 
@@ -401,7 +405,6 @@ def extend_dataset(npy_files: List[Path], train_file_path: Path) -> object:
     logging.info(f"Trying to add data to existing dataset {train_file_path}")
     # 2. Add new data to train set
 
-    # TODO: This is no proper caching!!!
     cache_file_path = Path("merged_new_data.npz")
     if cache_file_path.exists():
         new_experience = np.load(str(cache_file_path))["experience"]

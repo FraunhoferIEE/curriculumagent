@@ -58,8 +58,10 @@ def run_one_experiment(config,action_space_file, path_to_files: Path, run_nni: b
         The accuracy of the validation run.
 
     """
+
     config["patience"] = 0
     name = [a for a in os.listdir(path_to_files) if "_train.npz" in a][0][:-10]
+
     logging.info(f"Assuming the name {name} for the data files")
     s_train, a_train, s_validate, a_validate, _, _ = load_dataset(path_to_files, dataset_name=name)
 
@@ -73,13 +75,10 @@ def run_one_experiment(config,action_space_file, path_to_files: Path, run_nni: b
     junior = Junior(action_space_file=action_space_file,config=config, run_nni=run_nni)
 
     history = junior.train(
-        log_dir=None,
-        ckpt_dir=None,
-        patience=None,
-        x_train=s_tr_t,
-        y_train=a_train,
-        x_validate=s_val_t,
-        y_validate=a_validate,
+        run_name="experiment",
+        dataset_path=path_to_files,
+        dataset_name=name,
+        target_model_path = path_to_files,
     )
     acc = max(history.history["val_accuracy"])
 
