@@ -2,14 +2,10 @@ name: CI
 
 on: [push]
 
-env:
-  # Setting an environment variable with the value of a configuration variable
-  env_var: ${{ vars.ENV_CONTEXT_VAR }}
-
 jobs:
   pipeline:
     runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    environment: test
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
@@ -30,62 +26,52 @@ jobs:
   testbaseline:
     needs: pipeline
     runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    environment: test
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
       - name: Test with pytest number 1
         run: |
-          pip install pytest-cov pytest-benchmark
-          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_baseline -s
   testcommon:
     needs: pipeline
     runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    environment: test
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
       - name: Test with pytest number 2
         run: |
-          pip install pytest-cov pytest-benchmark
-          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_common -s
   testjunior:
     needs: pipeline
     runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    environment: test
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
       - name: Test with pytest number 2
         run: |
-          pip install pytest-cov pytest-benchmark
-          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_junior -s
   testsenior:
     needs: pipeline
     runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    environment: test
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
       - name: Test with pytest number 3
         run: |
-          pip install pytest-cov pytest-benchmark
-          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_senior -m "not gitlabonly" -s
   testtutor:
     needs: pipeline
     runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    environment: test
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
       - name: Test with pytest number 4
         run: |
-          pip install pytest-cov pytest-benchmark
-          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -s
       - name: Archive Test results
         uses: actions/upload-artifact@v3
@@ -97,14 +83,12 @@ jobs:
   testteacher:
     needs: pipeline
     runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    environment: test
     steps:
       # Install python and dependencies:
       - uses: actions/checkout@v3
       - name: Test with pytest number 4
         run: |
-          pip install pytest-cov pytest-benchmark
-          pip install -r requirements-dev.txt
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s -m "not slow"
       - name: Archive Test results
         uses: actions/upload-artifact@v3
