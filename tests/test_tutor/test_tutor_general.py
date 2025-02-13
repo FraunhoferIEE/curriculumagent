@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -27,13 +28,13 @@ class TestTutorGeneral:
 
         save_path = test_data_path / "temporary_save"
 
+        if save_path.is_dir():
+            if len(os.listdir(save_path)) > 0:
+                shutil.rmtree(save_path, ignore_errors=True)
+
         if not save_path.is_dir():
             os.mkdir(save_path)
 
-        files = os.listdir(save_path)
-        if len(files) > 0:
-            for file in files:
-                os.remove(str(save_path / file))
 
         assert not os.listdir(save_path)
         generate_tutor_experience(
@@ -68,13 +69,12 @@ class TestTutorGeneral:
 
         save_path = test_data_path / "temporary_save"
 
+        if save_path.is_dir():
+            if len(os.listdir(save_path)) > 0:
+                shutil.rmtree(save_path, ignore_errors=True)
+
         if not save_path.is_dir():
             os.mkdir(save_path)
-
-        files = os.listdir(save_path)
-        if len(files) > 0:
-            for file in files:
-                os.remove(str(save_path / file))
 
         assert not os.listdir(save_path)
         print(single_path)

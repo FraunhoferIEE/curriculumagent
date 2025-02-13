@@ -130,33 +130,6 @@ def check_convergence(action: BaseAction, obs: BaseObservation) -> bool:
         return True
 
 
-# def get_from_dict_set_bus(action_space: grid2op.Action.ActionSpace, act: grid2op.Action.BaseAction, idx: str) -> dict:
-#     """Convert action from dictionary based on BaseAction.as_dict() to a dictionary that can be used
-#     as input for the action space.
-#
-#     Args:
-#         action_space:action space of Grid2Op
-#         act: action that should be transformed/separated
-#         idx: str index of substation
-#
-#     Returns:
-#         Action
-#
-#     """
-#     # Collect effected bus ids
-#     bus_ids = [v["id"] for k, v in act.as_dict()["set_bus_vect"][idx].items()]
-#
-#     # get serialized dict
-#     ser_dict = act.as_serializable_dict()['set_bus']
-#
-#     # Generate action based on serialized action
-#     out_dict = {}
-#     for set_type in ["loads_id", "generators_id", "lines_or_id"]:
-#         sub_set = ser_dict[set_type]
-#         out_dict[set_type] = [(a, b) for (a, b) in sub_set if a in bus_ids]
-#     act_out = action_space({'set_bus': out_dict})
-#     return act_out
-
 def extract_action_set_from_actions(
         action_space: ActionSpace, action_vect: np.ndarray
 ) -> List[BaseAction]:
@@ -172,20 +145,21 @@ def extract_action_set_from_actions(
         List with actions.
 
     """
-    action_set = []
+    action_set = [action_space({})]
 
-    # Check if there is an action, else do nothing action:
-    if not action_vect.any():
-        return [action_space({})]
 
     act: grid2op.Action.BaseAction = action_space.from_vect(action_vect)
 
     act_dec = act.decompose_as_unary_actions()
 
-    for v in act_dec.values():
-        action_set += v
+    if act_dec:
+        action_set =[]
+
+        for v in act_dec.values():
+            action_set += v
 
     return action_set
+
 
 
 def split_action_and_return(
@@ -214,9 +188,11 @@ def split_action_and_return(
     """
 
     # Special case: Do nothing
-    if not action_vect.any():
-        yield action_space({})
-        return
+    d_n = action_space({})
+
+    if not action_vect.any() or action_space.from_vect(action_vect) == d_n:
+        yield d_n
+        return # We must call return or else we call it again
 
     # First extract action:
     split_actions = extract_action_set_from_actions(action_space, action_vect)
@@ -239,7 +215,7 @@ def split_action_and_return(
                 obs_min = obs_f.rho.max()
 
         if best_choice is None:
-            best_choice = action_space({})
+            best_choice = d_n
 
         # Assert whether a reconnection of the lines might be
         yield best_choice
@@ -300,6 +276,7 @@ def simulate_action(action_space: ActionSpace, obs: BaseObservation, action_vect
     act_dict = action.as_dict()
     if "set_bus_vect" not in act_dict.keys():
         action = find_best_line_to_reconnect(obs=obs, original_action=action)
+
         obs_f, _, done, info = obs.simulate(action)
     elif len(act_dict["set_bus_vect"]["modif_subs_id"]) == 1:
         action = find_best_line_to_reconnect(obs=obs, original_action=action)
@@ -342,7 +319,7 @@ def split_and_execute_action(env: BaseEnv, action_vect: np.ndarray) -> Tuple[Bas
     split_actions = extract_action_set_from_actions(env.action_space, action_vect)
     # Now simulate through all actions:
     cum_rew = 0
-    done = False
+    done = env.done
     obs = env.get_obs()
     info = {}
     for _ in range(len(split_actions)):
@@ -356,11 +333,12 @@ def split_and_execute_action(env: BaseEnv, action_vect: np.ndarray) -> Tuple[Bas
             if not is_legal(act_plus_reconnect, obs):
                 continue
 
-            obs_, _, done, _ = obs.simulate(act_plus_reconnect)
-            if obs_.rho.max() < obs_min and done is False:
+            obs_, _, done_sim, _ = obs.simulate(act_plus_reconnect)
+            if obs_.rho.max() < obs_min and done_sim is False:
                 best_choice = act_plus_reconnect
                 chosen_act = act
                 obs_min = obs_.rho.max()
+
 
         # Assert whether a reconnection of the lines might be
 
@@ -411,15 +389,18 @@ def revert_topo(action_space: grid2op.Action.ActionSpace, obs: grid2op.Observati
                 if obs_sim < min_rho:
                     idx = sub_id
                     act_best = act_a.copy()
+                    rho_best = obs_sim.copy()
 
     if act_best is not None:
         logging.info(
-            f"Revert Substation {idx} from {available_actions.keys()} to original with {obs.rho.max()} and"
-            f" {obs_sim}"
-        )
+            f"Revert Substation {idx} from {available_actions.keys()} to original with current rho "
+            f" {obs.rho.max()} and {rho_best} as new. Line status:{np.all(obs.line_status)}")
         return act_best
     else:
         return action_space({}).to_vect()
+
+
+
 
 
 def map_actions(list_of_actions: List[np.ndarray]) -> List[dict]:
@@ -443,3 +424,49 @@ def map_actions(list_of_actions: List[np.ndarray]) -> List[dict]:
         total_action.append(act_id)
 
     return total_action
+
+
+def change_bus_from_topo_vect(tv1, tv2, action_space):
+    """
+    Get the topology action in form of change_bus in order to get from topo_vect tv1 to topo_vect tv2.
+    Note that we do not (!) change the -1 values, given that this would make the action illegal
+
+    Args:
+        tv1: original topology
+        tv2: topology we want to move to
+        env: grid2op environment
+
+    Returns: Returns a action that can also effect multiple substations! Thus, it is essential to split
+    them into unitary actions
+
+    """
+    # We only look at changes that are not(!) -1
+    ids = np.where(np.abs(tv1 - tv2) == 1)[0]
+    a = action_space({})
+    a.change_bus = list(ids)
+    return a
+
+
+def set_bus_from_topo_vect(tv1, tv2, action_space):
+    """
+    Get the topology action in form of set_bus in order to get from topo_vect tv1 to topo_vect tv2.
+    Note that we do not (!) change the -1 values, given that this would make the action illegal
+
+    Args:
+        tv1: original topology
+        tv2: topology we want to move to
+        env: grid2op environment
+
+    Returns: Returns a action that can also effect multiple substations! Thus, it is essential to split
+    them into unitary actions
+
+    """
+    # We only look at changes that are not(!) -1
+    #ToDo: What about 2-1 and 1-2
+    ids = np.where(np.abs(tv1 - tv2) == 1)[0]
+
+    set_bus = [(i, tv2[i]) for i in ids]
+
+    a = action_space({})
+    a.set_bus = set_bus
+    return a

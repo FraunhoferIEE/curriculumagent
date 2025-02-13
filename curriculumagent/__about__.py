@@ -9,5 +9,5 @@ __title__ = 'CurriculumAgent'
 __description__ = 'CurriculumAgent is a cleanup and improved version of the NeurIPS 2020 Competition Agent by ' \
                   'Binbinchen.The agent is build to extract action sets of the Grid2Op Environment and then ' \
                   'use rule-based agent to train a Reinforcement Learning agent.'
-__author__ = 'OE224'
+__author__ = 'OE224, Fraunhofer IEE'
 __authors__ = ['Malte Lehna']

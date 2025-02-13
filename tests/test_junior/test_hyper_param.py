@@ -94,7 +94,10 @@ class TestNNIHyperOpt:
         This test is still experimental
         """
 
-        shutil.rmtree(test_temp_save, ignore_errors=True)
+        # Check if dir is empty
+        if test_temp_save.is_dir():
+            shutil.rmtree(test_temp_save, ignore_errors=True)
+
         os.mkdir(test_temp_save)
 
         assert len(os.listdir(test_temp_save)) == 0

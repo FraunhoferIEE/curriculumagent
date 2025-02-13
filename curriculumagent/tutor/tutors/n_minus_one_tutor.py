@@ -111,7 +111,7 @@ class NminusOneTutor(GeneralTutor):
             if self.revert_to_original_topo:
                 act = revert_topo(self.action_space, observation)
             else:
-                act = np.zeros(self.action_space_size)
+                act = self.action_space({}).to_vect()
 
             return act, -1
 
@@ -173,8 +173,7 @@ class NminusOneTutor(GeneralTutor):
             out = action_chosen, best_action_index
 
         else:
-            out = np.zeros(self.action_space_size), -1
-
+            out = self.action_space({}).to_vect(), -1
         return out
 
     def calculate_attacked_max_rho(self, obs: BaseObservation, action: BaseAction) -> float:

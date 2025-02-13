@@ -2,7 +2,6 @@ import os
 import logging
 from pathlib import Path
 from curriculumagent.tutor.tutor import general_tutor, n_minus_1_tutor
-logging.basicConfig(level=logging.INFO)
 
 
 def main():

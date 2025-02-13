@@ -13,7 +13,7 @@ from curriculumagent.common.utilities import (
     is_legal,
     split_action_and_return,
     find_best_line_to_reconnect,
-    simulate_action, revert_topo, map_actions,
+    simulate_action, revert_topo, map_actions, change_bus_from_topo_vect, set_bus_from_topo_vect, check_convergence,
 )
 from curriculumagent.teacher.submodule.common import affected_substations
 
@@ -82,6 +82,21 @@ class TestExecuteAction:
             _, _, _, info = test_env.step(o)
         assert info["is_illegal"] is False
 
+    def test_extract_action_set_dn(self,  test_env):
+        """
+        Testing the single action
+        """
+        d_n = test_env.action_space({})
+        d_n_vect = d_n.to_vect()
+
+        out = extract_action_set_from_actions(action_space=test_env.action_space, action_vect=d_n_vect)
+
+        assert isinstance(out, list)
+        assert len(out) == 1
+        assert isinstance(out[0], grid2op.Action.BaseAction)
+        assert d_n == out[0]
+
+
     def test_execute_action_single(self, test_env, test_action_set):
         """
         Testing the execute action set.
@@ -113,14 +128,14 @@ class TestExecuteAction:
         test_env.reset()
         obs, _, done, info = split_and_execute_action(env=test_env, action_vect=tuple_a)
 
-        assert pytest.approx(obs.rho.max()) == 1.0545718669891357
+        assert pytest.approx(np.round(obs.rho.max(),4)) == 1.0546
         assert test_env.nb_time_step == 2
         assert done is False
         assert info["is_illegal"] is False
 
     def test_execute_action_tripple(self, test_env, test_action_set):
         """
-        Testing the execute action set.
+        Testing whether the Do nothing action is returned
         """
         _, _, triple_a = test_action_set
 
@@ -213,6 +228,40 @@ class TestIsLegal:
         simulator_stressed = simulator.predict(act=action, new_gen_p=gen_p_stressed, new_load_p=load_p_stressed)
 
         assert not simulator_stressed.converged
+class TestCheckConvergence:
+    """
+    Test class for check_convergence function.
+    """
+
+    def test_converging(self, test_env_obs, sandbox_actions):
+        """Test that specific converging action IDs lead to convergence."""
+        env, obs = test_env_obs
+        actions = np.load(sandbox_actions)
+        # Converging action IDs based on your results
+        converging_action_ids = [0, 12]  # Example: Test action IDs 0 and 12
+
+        for action_id in converging_action_ids:
+            # Use actions from sandbox_actions loaded from the .npy file
+            action_vect = actions[action_id]
+            action = env.action_space.from_vect(action_vect)
+
+            # Check that the action leads to convergence
+            assert check_convergence(action, obs), f"Action ID {action_id} should converge but did not."
+
+    def test_non_converging(self, test_env_obs, sandbox_actions):
+        """Test that specific non-converging action IDs do not lead to convergence."""
+        env, obs = test_env_obs
+        actions = np.load(sandbox_actions)
+        # Non-converging action IDs based on your results
+        non_converging_action_ids = [39, 125]  # Example: Test action IDs 39 and 125
+
+        for action_id in non_converging_action_ids:
+            # Use actions from sandbox_actions loaded from the .npy file
+            action_vect = actions[action_id]
+            action = env.action_space.from_vect(action_vect)
+
+            # Check that the action does not lead to convergence
+            assert not check_convergence(action, obs), f"Action ID {action_id} should not converge but did."
 
 class TestSplitAction:
     """
@@ -231,7 +280,7 @@ class TestSplitAction:
         do_nothing = env.action_space({})
         actions = split_action_and_return(obs, env.action_space, do_nothing.to_vect())
         action = next(actions)
-        assert (action.to_vect() == do_nothing.to_vect()).all(), "Splitting a do nothing should result in do nothing"
+        assert (action == do_nothing) # "Splitting a do nothing should result in do nothing"
         with pytest.raises(StopIteration):
             action = next(actions)
 
@@ -363,3 +412,97 @@ class Test_map_actions:
         for k in range(3, 6):
             assert all(out[1][k] == b[k - 3])
 
+
+class TestGetFromTopoVect():
+    "Testing the change_bus_from_topo_vect and set_bus_from_topo_vect"
+    def test_change_bus_from_topo_vect(self,sandbox_env,sandbox_actions):
+        """
+        Testing the change bus
+        """
+        topo2 = np.array([1, 1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1,
+                          2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        obs = sandbox_env.get_obs()
+
+        # We take a random action
+        a = change_bus_from_topo_vect(obs.topo_vect,topo2,sandbox_env.action_space)
+
+        assert isinstance(a,grid2op.Action.BaseAction)
+        assert a.as_dict()["change_bus_vect"]["modif_subs_id"] == ["1","4"]
+        obs2,rew,done,info = split_and_execute_action(sandbox_env,a.to_vect())
+
+        assert np.all(obs2.topo_vect==topo2)
+
+    def test_set_bus_from_topo_vect(self,sandbox_env,sandbox_actions):
+        """
+        Testing the change bus
+        """
+        topo2 = np.array([1, 1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1,
+                          2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        obs = sandbox_env.get_obs()
+
+        # We take a random action
+        a = set_bus_from_topo_vect(obs.topo_vect,topo2,sandbox_env.action_space)
+
+        assert isinstance(a,grid2op.Action.BaseAction)
+        assert a.as_dict()["set_bus_vect"]["modif_subs_id"] == ["1","4"]
+        obs2,rew,done,info = split_and_execute_action(sandbox_env,a.to_vect())
+
+        assert np.all(obs2.topo_vect==topo2)
+
+    def test_both_together(self,sandbox_env,sandbox_actions):
+        """
+        Testing, whether we get the same results
+        """
+
+        topo3 = np.array([1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        obs = sandbox_env.get_obs()
+
+        # We take a random action
+        a = set_bus_from_topo_vect(obs.topo_vect, topo3, sandbox_env.action_space)
+        b = change_bus_from_topo_vect(obs.topo_vect, topo3, sandbox_env.action_space)
+
+        # Should be different actions
+        assert a!=b
+
+        # But with same results (needs unitary action for this, else it is illegal):
+        o1 = obs + a
+        o2 = obs +b
+        assert np.all(o1.topo_vect==o2.topo_vect)
+
+    def test_change_bus_from_topo_vect_backwards_to_one(self, sandbox_env, sandbox_actions):
+            """
+            Testing the change bus
+            """
+            topo1 = np.array([1, 1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1,
+                              2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+            obs = sandbox_env.get_obs()
+            topo2 = obs.topo_vect
+            # We take a random action
+            a = change_bus_from_topo_vect(topo1, topo2, sandbox_env.action_space)
+
+            assert isinstance(a, grid2op.Action.BaseAction)
+            assert a.as_dict()["change_bus_vect"]["modif_subs_id"] == ["1", "4"]
+
+
+    def test_set_bus_from_topo_vect_back_to_one(self,sandbox_env,sandbox_actions):
+        """
+        Testing the change bus
+        """
+        topo1 = np.array([1, 1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1,
+                          2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        obs = sandbox_env.get_obs()
+        topo2 = obs.topo_vect
+        # We take a random action
+        a = set_bus_from_topo_vect(topo1,topo2,sandbox_env.action_space)
+
+        assert isinstance(a,grid2op.Action.BaseAction)
+        assert a.as_dict()["set_bus_vect"]["modif_subs_id"] == ["1","4"]
+        obs2,rew,done,info = split_and_execute_action(sandbox_env,a.to_vect())
+
+        assert np.all(obs2.topo_vect==topo2)

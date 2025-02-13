@@ -8,6 +8,7 @@ LightSim2Grid>=0.7.1
 lightning
 ubelt>=0.10.1
 gymnasium
+ipython==8.22.1
 ray==2.5.1
 ray[tune]==2.5.1
 ray[rllib]==2.5.1
@@ -25,3 +26,10 @@ ConfigSpace
 typeguard<3
 pathlib
 filelock==3.10
+torch
+torchaudio
+torchmetrics
+torchvision
+torch-geometric
+pytorch-tabular
+optuna

@@ -1,10 +1,12 @@
 import logging
+import math
 
+import grid2op.Action
 import numpy as np
 import pytest
+import torch
 
 from curriculumagent.common.obs_converter import obs_to_vect, vect_to_dict
-
 
 class TestConvertObs:
     """
@@ -34,7 +36,7 @@ class TestConvertObs:
         mt_dim = int(np.sqrt(len(sub_obs[1221:])))
         assert np.all(obs.connectivity_matrix() == sub_obs[1221:].reshape(mt_dim, mt_dim))
 
-    def test_old_chosen(self,test_env):
+    def test_old_chosen(self, test_env):
         """
         Testing, whether the old chosen parameter return the same as the new obs_to_vect method
         """
@@ -49,7 +51,7 @@ class TestConvertObs:
         obs = test_env.get_obs()
         sub_obs = obs_to_vect(obs, False)
         old_chosen_obs = obs.to_vect()[chosen]
-        assert np.all(sub_obs==old_chosen_obs)
+        assert np.all(sub_obs == old_chosen_obs)
 
     def test_vect_to_dict_error(self, test_env):
         """
@@ -76,15 +78,15 @@ class TestConvertObs:
         dict_out = vect_to_dict(sub_obs, obs, False)
 
         for key in [
-                    "month", "day", "hour_of_day", "minute_of_hour", "day_of_week",
-                    "gen_p", "gen_q", "gen_v", "load_p", "load_q", "load_v", "p_or", "q_or",
-                    "v_or", "a_or", "p_ex", "q_ex", "v_ex", "a_ex", "rho", "line_status",
-                    "timestep_overflow", "topo_vect", "time_before_cooldown_line",
-                    "time_before_cooldown_sub", "time_next_maintenance", "duration_next_maintenance"
-                    ]:
+            "month", "day", "hour_of_day", "minute_of_hour", "day_of_week",
+            "gen_p", "gen_q", "gen_v", "load_p", "load_q", "load_v", "p_or", "q_or",
+            "v_or", "a_or", "p_ex", "q_ex", "v_ex", "a_ex", "rho", "line_status",
+            "timestep_overflow", "topo_vect", "time_before_cooldown_line",
+            "time_before_cooldown_sub", "time_next_maintenance", "duration_next_maintenance"
+        ]:
             assert np.all(obs.to_json()[key] == dict_out[key])
 
-    def test_vect_to_dict_connectivity_warning(self,caplog, test_env):
+    def test_vect_to_dict_connectivity_warning(self, caplog, test_env):
         """
         Testing, when the connectivity matrix is not added to a full extend, that a warning is raised
         """
@@ -103,4 +105,4 @@ class TestConvertObs:
         obs = test_env.get_obs()
         sub_obs = obs_to_vect(obs, True)
         dict_out = vect_to_dict(sub_obs, obs, True)
-        assert np.all(dict_out["connectivity_matrix"]==obs.connectivity_matrix())
+        assert np.all(dict_out["connectivity_matrix"] == obs.connectivity_matrix())

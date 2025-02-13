@@ -1,0 +1,10 @@
+\begin{tabular}{lrrrrrr}
+\toprule
+cluster & Changed Topology & Decreased Load Consumption & Disconnected Powerlines & Increased Generator Injections & Increased Powerflow on Powerlines & Total \\
+\midrule
+dn & 1573.000000 & 4345.000000 & 9225.000000 & 178.000000 & 1153.000000 & 16474.000000 \\
+senior & 7191.000000 & 2239.000000 & 1360.000000 & 121.000000 & 784.000000 & 11695.000000 \\
+topo & 6676.000000 & 2508.000000 & 1424.000000 & 106.000000 & 752.000000 & 11466.000000 \\
+Total & 15440.000000 & 9092.000000 & 12009.000000 & 405.000000 & 2689.000000 & 39635.000000 \\
+\bottomrule
+\end{tabular}

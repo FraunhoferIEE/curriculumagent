@@ -1,12 +1,12 @@
-import pytest
 import os
-import matplotlib
-import shutil
-from pathlib import Path
-from curriculumagent.common.score_agent import AgentReport, render_report, plot_bar_comparison, load_or_run
-from grid2op.Agent import DoNothingAgent
-import pytest
 import pickle
+import shutil
+
+import matplotlib
+import pytest
+from grid2op.Agent import DoNothingAgent
+
+from curriculumagent.common.score_agent import AgentReport, render_report, plot_bar_comparison, load_or_run
 
 test_flag = False
 
@@ -41,7 +41,7 @@ class TestLoadOrRun:
                     os.rmdir(dir_path)
 
         dn_report = load_or_run(do_nothing_agent, test_env, data_path, name="DoNothing", number_episodes=1,
-                                nb_processes=1)
+                                nb_processes=1,reinit=True )
         assert isinstance(dn_report, AgentReport)
 
         assert (data_path.joinpath('agent_logs')).is_dir()
@@ -50,43 +50,38 @@ class TestLoadOrRun:
         assert dn_report.avg_score == 0.0
         assert dn_report.agent_name == 'DoNothing_DoNothingAgent'
 
-    def test_load(self, test_temp_save):
+    def test_load(self, test_path_data):
         '''
         Copy the pickled file to a new directory
         Check if the file can be loaded with load_or_run and the report
         Check how the report looks like.
         '''
-        data_path = test_temp_save
-        source_path = data_path.joinpath('DoNothing_report_data.pkl')
-        target_path_with_file = Path(__file__).parent / "data" / "report" / "DoNothing_report_data.pkl"
-        target_path = Path(__file__).parent / "data" / "report"
-        os.makedirs(target_path, exist_ok=True)
-        shutil.copy2(source_path, target_path_with_file)
         try:
-            report = AgentReport.load(Path(__file__).parent / "data" / "report" / "DoNothing_report_data.pkl")
+            report = AgentReport.load(test_path_data / "report_data" / "DoNothing_report_data.pkl")
             assert report.avg_score == 0.0
             assert report.agent_name == 'DoNothing_DoNothingAgent'
         except pickle.UnpicklingError:
             pytest.raises(pickle.UnpicklingError)
 
-    def test_plot_bar_comparison(self,test_temp_save):
+    def test_plot_bar_comparison(self, test_path_data):
         '''
         Plot function: Load the Report (similar to second test) and then execute the plot method
         Check if it is a plot.
         Check the Legend, axis
         '''
-        report = AgentReport.load(Path(__file__).parent / "data" / "report" / "DoNothing_report_data.pkl")
+        report = AgentReport.load(test_path_data / "report_data" / "DoNothing_report_data.pkl")
         axis = plot_bar_comparison([report, report], 'all_scores')
-        assert isinstance(axis.legendHandles[0], matplotlib.patches.Rectangle)
-        assert isinstance(axis.legendHandles[1], matplotlib.patches.Rectangle)
+        assert isinstance(axis.legend_handles[0], matplotlib.patches.Rectangle)
+        assert isinstance(axis.legend_handles[1], matplotlib.patches.Rectangle)
         assert axis.axes.name == 'rectilinear'
 
-
-    def test_render_report(self,test_temp_save):
+    def test_render_report(self, test_path_data, test_temp_save):
         """
         Testing, whether the rendering of the report works
         """
-        report_path = test_temp_save.parent / "report_data" / "DoNothing_report_data.pkl"
+        shutil.rmtree(test_temp_save, ignore_errors=True)
+        os.mkdir(test_temp_save)
+        report_path = test_path_data / "report_data" / "DoNothing_report_data.pkl"
         report = AgentReport.load(report_path)
         render_report(test_temp_save / 'report.md', report, [report])
         assert (test_temp_save / "DoNothing_DoNothingAgent_score.png").is_file()

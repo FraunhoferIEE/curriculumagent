@@ -50,18 +50,9 @@ class TestEnvRllib:
 
         # Input file with no actions.npy in it
         config = {"action_space_path": test_env_path, "env_path": test_env_path, "subset": False}
-        with pytest.raises(KeyError):
-            SeniorEnvRllib(config)
-
-        # Input file with no actions.npy in it
-        config = {
-            "action_space_path": test_temp_save,
-            "env_path": test_env_path,
-            "action_threshold": 0.9,
-            "subset": False,
-        }
         with pytest.raises(FileNotFoundError):
             SeniorEnvRllib(config)
+
 
     def test_init_check_import(self, test_paths_env):
         """

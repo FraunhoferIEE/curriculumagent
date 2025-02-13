@@ -143,3 +143,5 @@ cython_debug/
 
 # Generated documentation from gitlab pages
 public/
+
+/tests/data/junior_experience/ckpt-experiment/

@@ -19,12 +19,12 @@ class TestSenior:
     Testing the Senior class and all its underlying methods
     """
 
-    def test_init_base_model(self, senior_values):
+    def test_init_base_model(self, senior_values_tf):
         """
         First, we test whether the agent is able to initialize. Note that this also means that we
         double check the model.
         """
-        env_path, actions_path, path_to_junior, test_temp_save, _, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, _, scaler = senior_values_tf
 
         # Check if dir is empty
         if test_temp_save.is_dir():
@@ -59,11 +59,12 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-    def test_init_advanced_model(self, senior_values):
+
+    def test_init_advanced_model(self, senior_values_tf):
         """
         Now let's check, whether the custom config is added !
         """
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
 
         # Check if dir is empty
         if test_temp_save.is_dir():
@@ -96,11 +97,12 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-    def test_scaler_imports_and_subset(self, senior_values):
+
+    def test_scaler_imports_and_subset(self, senior_values_tf):
         """
         Testing, the different ways to import the scaler
         """
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
         ray.init(ignore_reinit_error=True)
 
         with open(scaler, "rb") as fp:  # Pickling
@@ -150,13 +152,14 @@ class TestSenior:
 
         ray.shutdown()
 
-    @pytest.mark.ultra_slow
+    @pytest.mark.ulra_slow
     @pytest.mark.slow
-    def test_train_runs_without_errors(self, senior_values):
+    def test_train_runs_without_errors(self, senior_values_tf):
         """
         Testing of training
         """
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
         ray.init(ignore_reinit_error=True)
         senior = Senior(env_path=env_path,
                         action_space_path=actions_path,
@@ -174,13 +177,13 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-    @pytest.mark.ultra_slow
+    @pytest.mark.ulra_slow
     @pytest.mark.slow
-    def test_train_default(self, senior_values):
+    def test_train_default(self, senior_values_tf):
         """
         Testing of training
         """
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
         ray.init(ignore_reinit_error=True)
         senior = Senior(env_path=env_path,
                         action_space_path=actions_path,
@@ -195,11 +198,12 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-    def test_restore(self, senior_values, rllib_ckpt):
+
+    def test_restore(self, senior_values_tf, rllib_ckpt):
         """
         Testing whether the Policy can be loaded via restore
         """
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
         ray.init(ignore_reinit_error=True)
         senior = Senior(env_path=env_path,
                         action_space_path=actions_path,
@@ -213,11 +217,12 @@ class TestSenior:
         assert senior.ppo.iteration == 1
         ray.shutdown()
 
-    def test_save_model(self, senior_values, rllib_ckpt):
+
+    def test_save_model(self, senior_values_tf, rllib_ckpt):
         """
         Testing whether the previously loaded policy can be saved again
         """
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
         ray.init(ignore_reinit_error=True)
         senior = Senior(env_path=env_path,
                         action_space_path=actions_path,
@@ -238,7 +243,8 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-    def test_my_agent_return(self, senior_values, rllib_ckpt, test_temp_save):
+
+    def test_my_agent_return(self, senior_values_tf, rllib_ckpt, test_temp_save):
         """
         Testing, whether the my_agent is returned
         """
@@ -249,7 +255,7 @@ class TestSenior:
         if not test_temp_save.is_dir():
             os.mkdir(test_temp_save)
 
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
         ray.init(ignore_reinit_error=True)
         senior = Senior(env_path=env_path,
                         action_space_path=actions_path,
@@ -268,11 +274,12 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-    def test_init_errors(self, senior_values):
+
+    def test_init_errors(self, senior_values_tf):
         """
         Testing for errors
         """
-        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values
+        env_path, actions_path, path_to_junior, test_temp_save, custom_config, scaler = senior_values_tf
 
         # First raise error due to missing ray init()
         with pytest.raises(AssertionError):

@@ -14,7 +14,7 @@ from grid2op.Agent import BaseAgent
 from grid2op.Observation import BaseObservation
 
 from curriculumagent.common.utilities import simulate_action, find_best_line_to_reconnect, split_action_and_return, \
-    map_actions
+    map_actions, revert_topo
 
 
 class GeneralTutor(BaseAgent):
@@ -28,6 +28,7 @@ class GeneralTutor(BaseAgent):
             do_nothing_threshold: Optional[float] = 0.925,
             best_action_threshold: Optional[float] = 0.999,
             return_status: Optional[bool] = True,
+            revert_to_original_topo: Optional[bool] = False
     ):
         """Simplified __init__ method of the Tutor class.
 
@@ -43,6 +44,8 @@ class GeneralTutor(BaseAgent):
             best_action_threshold: Threshold, when the collected action is sufficient and the search can
             be stopped.
             return_status: Whether each step should be logged.
+            revert_to_original_topo: Should the agent revert the grid to the orignal state
+            if it is stable ?
 
         Returns:
             None.
@@ -63,11 +66,11 @@ class GeneralTutor(BaseAgent):
         # Now map action ids:
         self.actions = map_actions(list_of_actions)
 
-        self.action_space_size = self.action_space.size()
         self.do_nothing_threshold = do_nothing_threshold
         self.action_threshold = best_action_threshold
         self.return_status = return_status
         self.next_actions = None
+        self.revert_to_original_topo = revert_to_original_topo
 
     def act_with_id(self, observation: BaseObservation) -> Tuple[np.ndarray, int]:
         """Compute greedy search of Tutor.
@@ -83,11 +86,13 @@ class GeneralTutor(BaseAgent):
 
         """
         start_time = time.time()
-
+        out = self.action_space({}).to_vect(),-1
         # Check for do nothing
         if observation.rho.max() < self.do_nothing_threshold:
-            # secure, return "do nothing" in bus switches.
-            return np.zeros(self.action_space_size), -1
+            # Early return if below threshold return "do nothing" in bus switches.
+            if self.revert_to_original_topo:
+                out =  revert_topo(self.action_space, observation),-1
+            return out
 
         # Take lower values of either rho max or do nothing rho max
         obs_dn, _, _, _ = observation.simulate(self.action_space({}))
@@ -123,9 +128,6 @@ class GeneralTutor(BaseAgent):
 
         if action_chosen is not None:
             out = action_chosen, best_action_index
-
-        else:
-            out = np.zeros(self.action_space_size), -1
 
         return out
 

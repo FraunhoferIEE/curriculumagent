@@ -6,6 +6,7 @@ import pytest
 import ray
 import tensorflow as tf
 from grid2op.Agent import BaseAgent
+from keras.engine.functional import Functional
 from lightsim2grid import LightSimBackend
 from tensorflow.keras.models import Sequential
 
@@ -94,7 +95,7 @@ class TestBaselineAgent:
         myagent.load(path=junior_path,
                      actions_path=senior_path / "actions")
         assert isinstance(myagent.agent, MyAgent)
-        assert isinstance(myagent.agent.model, Sequential)
+        assert isinstance(myagent.agent.model, Functional)
 
         # Test, wether model works:
         obs = env.reset()
@@ -124,7 +125,7 @@ class TestBaselineAgent:
 
         assert isinstance(act, grid2op.Action.BaseAction)
 
-    def test_actions_senior(self, test_baseline_models):
+    def test_actions_senior(self,  test_baseline_models):
         """
         Testing multiple action steps
         """

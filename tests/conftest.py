@@ -1,7 +1,6 @@
 """
 This file can be used to define extra pytest rules and fixtures
 """
-import os
 import pickle
 import random
 from pathlib import Path
@@ -10,6 +9,7 @@ import grid2op
 import numpy as np
 import pytest
 import tensorflow as tf
+import torch
 from gymnasium.spaces import Box, Discrete
 # We formulate two additional measures to assure that the run slow and ultra slow are triggered:
 from lightsim2grid import LightSimBackend
@@ -21,8 +21,10 @@ from curriculumagent.senior.rllib_execution.alternative_rewards import PPO_Rewar
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: Tests will be slow. ")
 
+
 def pytest_configure(config):
     config.addinivalue_line("markers", "gitlabonly: Test only for gitlab, because not enought resources on github. ")
+
 
 def pytest_addoption(parser):
     parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
@@ -47,8 +49,9 @@ def test_paths_env():
     """
     test_env_path = Path(__file__).parent / "data" / "training_data_track1"
 
-    test_actions_path = Path(__file__).parent/ "data" / "action_spaces" /"original"
+    test_actions_path = Path(__file__).parent / "data" / "action_spaces" / "original"
     return test_env_path, test_actions_path
+
 
 @pytest.fixture
 def test_baseline_models():
@@ -60,7 +63,8 @@ def test_baseline_models():
     junior_bl_path = Path(__file__).parent / "data" / "baseline" / "junior"
     senior_bl_path = Path(__file__).parent / "data" / "baseline" / "saved_model"
 
-    return senior_bl_path,junior_bl_path
+    return senior_bl_path, junior_bl_path
+
 
 @pytest.fixture
 def test_env(test_paths_env):
@@ -77,6 +81,7 @@ def test_env(test_paths_env):
     env.set_id(1)
     env.reset()
     return env
+
 
 @pytest.fixture
 def test_env_nonconverge():
@@ -129,6 +134,7 @@ def test_action_paths():
     tripple_path = test_data_path / "action_spaces" / "test_tripple.npy"
     return single_path, tuple_path, tripple_path
 
+
 @pytest.fixture
 def test_action_single():
     """
@@ -138,6 +144,27 @@ def test_action_single():
     single_path1 = test_data_path / "action_spaces" / "test_single01.npy"
     single_path2 = test_data_path / "action_spaces" / "test_single02.npy"
     return single_path1, single_path2
+
+@pytest.fixture
+def sandbox_env():
+    """
+    Sandbox environment for testing
+    """
+    backend = LightSimBackend()
+    env = grid2op.make(
+        dataset="l2rpn_case14_sandbox", backend=backend, test=True
+    )
+    env.set_id(1)
+    env.reset()
+    return env
+
+@pytest.fixture
+def sandbox_actions():
+    """
+    Actions of the sandbox
+    """
+    test_actions_path = Path(__file__).parent / "data" / "action_spaces" / "sandbox_actions.npy"
+    return test_actions_path
 
 @pytest.fixture
 def test_submission_action_space():
@@ -161,6 +188,16 @@ def test_junior_input():
     s_tr, a_tr, s_v, a_v, s_te, a_te = load_dataset(dataset_path=data_path, dataset_name="test")
     return s_tr, a_tr, s_v, a_v, s_te, a_te
 
+@pytest.fixture
+def test_junior_input_path():
+    """
+    Build the Junior Test data
+    Returns:
+
+    """
+
+    data_path = Path(__file__).parent / "data" / "junior_experience"
+    return data_path,"test"
 
 @pytest.fixture
 def test_temp_save():
@@ -169,6 +206,7 @@ def test_temp_save():
     """
     data_path = Path(__file__).parent / "data" / "temporary_save"
     return data_path
+
 
 @pytest.fixture
 def test_path_data():
@@ -190,11 +228,20 @@ def test_submission_models():
     ray_v24 = submission_dir / "ray_v24"
     return old_m, ray_v1, ray_v24
 
+@pytest.fixture
+def test_submission_model_torch():
+    """
+    Test paths of the original submission model
+    """
+    submission_dir = Path(__file__).parent / "data" / "submission"
+    ray_v24 = submission_dir / "ray_v24_torch" / "model.pt"
+    return ray_v24
+
 
 @pytest.fixture
 def test_scaler():
     """
-    Get MinMaxScaler
+    Get Scaler
     """
     scaler_path = Path(__file__).parent / "data" / "scaler_junior.pkl"
     with open(scaler_path, "rb") as fp:  # Pickling
@@ -247,32 +294,63 @@ def action_space():
 
 
 @pytest.fixture
-def custom_config():
+def custom_config_tf():
     """
     Custom config for advanced junior model
     """
-    default_params =  {'activation': 'relu',
-                              'initializer': "Z",
-                              'layer1': 1000,
-                              'layer2': 1000,
-                              'layer3': 1000,
-                              'layer4': 1000}
+    default_params = {'activation': 'relu',
+                      'initializer': "Z",
+                      'layer1': 1000,
+                      'layer2': 1000,
+                      'layer3': 1000,
+                      'layer4': 1000}
 
-    custom_config = {"model_path": Path(__file__).parent / "data"/"junior_experience" / "model",
-                    "custom_config": default_params}
+    custom_config = {"model_path": Path(__file__).parent / "data" / "junior_experience" / "model",
+                     "custom_config": default_params}
     return custom_config
 
 @pytest.fixture
-def senior_values(custom_config, test_paths_env, test_path_data, test_temp_save, test_action_single):
+def custom_config_torch():
+    """
+    Custom config for advanced junior model
+    """
+    default_params = {'activation': 'relu',
+                      'initializer': "Z",
+                      'layer1': 1000,
+                      'layer2': 1000,
+                      'layer3': 1000,
+                      'layer4': 1000}
+
+    custom_config = {"model_path": Path(__file__).parent / "data" / "junior_experience" / "pt_model" / "epoch=29-step=30.ckpt",
+                     "custom_config": default_params}
+    return custom_config
+
+
+@pytest.fixture
+def senior_values_tf(custom_config_tf, test_paths_env, test_path_data, test_temp_save, test_action_single):
     """
     Values for the Senior Tests
     """
     env_path, act_path = test_paths_env
-    actions_path = [act_path.parent / "submission" / "actionspace_nminus1.npy", act_path.parent / "submission" / "actionspace_tuples.npy"]
-    path_to_junior = custom_config["model_path"]
+    actions_path = [act_path.parent / "submission" / "actionspace_nminus1.npy",
+                    act_path.parent / "submission" / "actionspace_tuples.npy"]
+    path_to_junior = custom_config_tf["model_path"]
     scaler = test_path_data / "scaler_junior.pkl"
-    c_c = custom_config["custom_config"]
-    return env_path,actions_path,path_to_junior,test_temp_save,c_c,scaler
+    c_c = custom_config_tf["custom_config"]
+    return env_path, actions_path, path_to_junior, test_temp_save, c_c, scaler
+
+@pytest.fixture
+def senior_values_torch(custom_config_torch, test_paths_env, test_path_data, test_temp_save, test_action_single):
+    """
+    Values for the Senior Tests
+    """
+    env_path, act_path = test_paths_env
+    actions_path = [act_path.parent / "submission" / "actionspace_nminus1.npy",
+                    act_path.parent / "submission" / "actionspace_tuples.npy"]
+    path_to_junior = custom_config_torch["model_path"]
+    scaler = test_path_data / "scaler_junior.pkl"
+    c_c = custom_config_torch["custom_config"]
+    return env_path, actions_path, path_to_junior, test_temp_save, c_c, scaler
 
 @pytest.fixture
 def rllib_ckpt(test_path_data):
@@ -283,4 +361,46 @@ def rllib_ckpt(test_path_data):
     return ckpt
 
 
+@pytest.fixture
+def test_n_paths():
+    a1 = Path(__file__).parent / "data" / "action_spaces" / "single_tuple_tripple.npy"
+    r1 = Path(__file__).parent / "data" / "junior_experience"
+    return a1, r1
 
+
+
+@pytest.fixture
+def test_torch_pred():
+    targets = torch.tensor(
+        [0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0]).float()
+    pred = torch.tensor(
+        [0.01, 0.01, 0.99, 0.01, 0.98, 0.01, 0.01, 0.01, 0.99, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+         0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+         0.01, 0.01, 0.01, 0.01, 0.01, 0.01]).float()
+    pred_bad = torch.tensor(0.01).repeat(42)
+    pred_only1 = torch.tensor(0.99).repeat(42)
+    return targets, pred, pred_bad, pred_only1
+
+
+@pytest.fixture
+def test_min_max():
+    """
+    Providing a list for the XTransform test
+    """
+    out = [[0.0, 1.0] for i in range(27) ]
+        # Now overwrite:
+    out[0] = [0.0, 10]
+    out[11] = [0.0, 2]
+    return out[:15]
+
+@pytest.fixture
+def test_env_obs():
+    """Fixture to set up the Grid2Op environment and return the environment and an initial observation."""
+
+    # Initialize the Grid2Op environment
+    env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())
+    # Reset the environment to get the initial observation
+    obs = env.reset()
+
+    return env, obs

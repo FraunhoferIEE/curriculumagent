@@ -11,78 +11,32 @@ import logging
 from pathlib import Path
 from typing import Union, Optional, Tuple, List
 
-import nni
+import grid2op.Environment
 import numpy as np
+from sklearn.base import BaseEstimator
+from sklearn.preprocessing import StandardScaler
 
-from collections import ChainMap
-
-import tensorflow as tf
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, Callback, EarlyStopping
-from tensorflow.keras.optimizers.schedules import LearningRateSchedule
-from tensorflow.keras.initializers import Initializer
-
-from typing import Union, Optional, TypedDict, Tuple, List
-
-from curriculumagent.common.utilities import map_actions
-
-
-class JuniorParam(TypedDict):
-    """TypeDict Class with following Attributes:
-    action_space_path: Either path to the actions or a list containing mutliple actions.
-    data_path: Path of the Grid2Op environment
-    action_threshold: Between 0 and 1
-    subset: Should the obs.to_vect be filtered similar to the original Agent. If True,
-            the obs.to_vect is filtered based on predefined values. If False, all values are considered.
-            Alternatively, one can submit the once own values.
-            testing: Indicator, whether the underlying Grid2Op Environment should be started in testing mode or not
-    """
-
-    activation: str
-    learning_rate: Optional[Union[float, LearningRateSchedule]]
-    layer1: int
-    layer2: int
-    layer3: int
-    layer4: int
-    batchsize: int
-    dropout1: float
-    dropout2: float
-    epochs: int
-    initializer: Initializer
-
-
-class SendMetrics(tf.keras.callbacks.Callback):
-    """ Keras callback to send metrics to NNI framework
-    """
-
-    def on_epoch_end(self, epoch, logs=None):
-        """Keras callback to send the intermediate result to NNI
-
-        Args:
-            epoch: Epoch of training
-            logs: Log input
-
-        Returns: None, reports the intermediate result to NNI
-
-        """
-        # TensorFlow 2.0 API reference claims the key is `val_acc`, but in fact it's `val_accuracy`
-        if logs is None:
-            logs = {}
-        if "val_acc" in logs:
-            nni.report_intermediate_result(logs["val_acc"])
-        else:
-            nni.report_intermediate_result(logs["val_accuracy"])
+from curriculumagent.junior.junior_student_pytorch import JuniorParamTorch, JuniorTorch
+from curriculumagent.junior.junior_student_tensorflow import JuniorParamTF, JuniorTF
 
 
 class Junior:
-    def __init__(
-            self,
-            action_space_file: Union[Path, List[Path]],
-            config: JuniorParam =None,
-            seed: Optional[int] = None,
-            run_nni: bool = False
-    ):
-        """Constructor of the Junior simple model or model with more flexible parameters. This Junior can also be used
-        for the hyperparameter search with tune ore with NNI.
+    """
+    Create the overall Junior which can train either a torch or a tensorflow model.
+    """
+
+    def __init__(self,
+                 action_space_file: Union[Path, List[Path], str],
+                 run_with_tf: bool = True,
+                 config: Union[JuniorParamTF, JuniorParamTorch] = {},
+                 seed: Optional[int] = None,
+                 scaler: Optional[StandardScaler] = None, #ToDo ask about scaler
+                 run_nni: bool = False
+                 ):
+        """Constructor of the Junior with either Pytorch Lightning or with Keras-Tensorflow.
+        The junior can receive hyperparameters in the config to create a more flexible model.
+
+        Furhter, it is possible to create a hyperparameter search with tune ore with NNI.
 
         Except setting all variables, the init additionally requires the size of the train set and optionally
         the number of epochs.
@@ -91,6 +45,7 @@ class Junior:
             Pass epochs, learning_rate, batchsize, layer_size in the config.
 
         Args:
+            run_with_tf: Should the agent run with tensorflow. If set to False, torch is selected instead.
             action_space_file: Action Space file that was used for the Tutor training. This is needed to extract the
             correct shape of the Junior model.
             config: Dictionary containing the correct input for the hyperparameters.
@@ -102,259 +57,123 @@ class Junior:
         """
 
         # Set self actions to a list to iterate for later
-        if config is None:
-            config = {}
-
-        list_of_actions = []
+        if run_with_tf:
+            self.junior_model = JuniorTF(action_space_file=action_space_file,
+                                         config=config,
+                                         seed=seed,
+                                         run_nni=run_nni)
+        else:
+            self.junior_model = JuniorTorch(action_space_file=action_space_file,
+                                            config=config,
+                                            seed=seed,
+                                            run_nni=run_nni)
+        self.run_with_tf = run_with_tf
+        self.actions = None
         if isinstance(action_space_file, Path):
             assert action_space_file.is_file()
-            list_of_actions = [np.load(str(Path(action_space_file)))]
+            self.actions = np.load(str(Path(action_space_file)))
 
         elif isinstance(action_space_file, list):
             for act_path in action_space_file:
                 assert act_path.is_file()
-            list_of_actions = [np.load(str(act_path)) for act_path in action_space_file]
+            self.actions = np.concatenate([np.load(str(act_path)) for act_path in action_space_file], axis=0)
 
-        self.config = config
+        self.scaler = scaler if isinstance(scaler, BaseEstimator) else None
 
-        layer_size, initializer, activation = self._extract_config(config)
+    def train(self,
+              run_name: str,
+              dataset_path: Path,
+              target_model_path: Path,
+              dataset_name: str = "junior_dataset",
+              epochs: int = 1000,
+              **kwargs
+              ) -> dict:
+        """Loads the dataset and then trains the JuniorModel with either Tensorflow or torch.
 
-        self.lr = config.get("learning_rate", 5e-4)
-        self.batch_size = config.get("batchsize", 256)
-        self.epochs = config.get("epochs", 1000)
-        self.num_actions = len(dict(ChainMap(*map_actions(list_of_actions))))
-        self.activation = activation
-        self.layer_size = layer_size
-        self.lf = tf.keras.losses.SparseCategoricalCrossentropy()
-        self.initializer = tf.keras.initializers.Orthogonal()
-
-        # Seed:
-        self.seed = seed
-        if self.seed:
-            np.random.seed(self.seed)
-            tf.random.set_seed(self.seed)
-
-
-
-        # Init Model: (either simple or advanced)
-        self.model = self._build_model()
-        if run_nni:
-            self.callback = [SendMetrics()]
-        else:
-            self.callback = []
-
-    def _build_model(self) -> tf.keras.models.Sequential:
-        """Build and return the junior network as a keras model.
 
         Args:
-            None.
+            run_name: The name of the training run.
+            dataset_path: Path to the dataset files.
+            target_model_path: Path, where to save the model.
+            action_space_file: Optional action space file of the tutor.
+            dataset_name: The name of the dataset in {dataset_name}_train.npz.
+            epochs: The number of epochs to train.
+            kwargs: Additional arguments for either the Torch or TF junior
 
         Returns:
-            Compiled Keras model.
+            Training history with at least the keys accuracy and val_accuracy
 
         """
-        if not self.config:
-            # build standart juniour model
+        if not target_model_path.is_dir():
+            logging.warning(f"{target_model_path} does not exists yet. Create directory")
+            target_model_path.mkdir(parents=True, exist_ok=True)
 
-            model = tf.keras.models.Sequential(
-                [
-                    tf.keras.layers.Dense(units=1000, activation=self.activation, kernel_initializer=self.initializer),
-                    tf.keras.layers.Dense(units=1000, activation=self.activation, kernel_initializer=self.initializer),
-                    tf.keras.layers.Dense(units=1000, activation=self.activation, kernel_initializer=self.initializer),
-                    tf.keras.layers.Dropout(0.25),
-                    tf.keras.layers.Dense(units=1000, activation=self.activation, kernel_initializer=self.initializer),
-                    tf.keras.layers.Dropout(0.25),
-                    tf.keras.layers.Dense(self.num_actions, activation="softmax"),
-                ]
+        ckpt_dir = target_model_path / f"ckpt-{run_name}"
+
+        if self.run_with_tf:
+            s_train, a_train, s_validate, a_validate, s_test, a_test = load_dataset(dataset_path, dataset_name)
+
+            if self.scaler:
+                s_train = self.scaler.transform(s_train)
+                s_validate = self.scaler.transform(s_validate)
+            # Get maximum number of actions:
+
+            history = self.junior_model.train(
+                x_train=s_train,
+                y_train=a_train,
+                x_validate=s_validate,
+                y_validate=a_validate,
+                log_dir=None,
+                ckpt_dir=ckpt_dir,
+                epochs=epochs,
+                **kwargs
             )
+            # Save model
+            self.junior_model.model.save(target_model_path)
 
         else:
-            # Build model based on hyperparameter:
+            history = self.junior_model.train(
+                dataset_path=dataset_path,
+                target_model_path=ckpt_dir,
+                dataset_name=dataset_name,
+                epochs=epochs,
+                scaler=self.scaler,
+                **kwargs)
 
-            # Layer1:
-            model_structure = [
-                tf.keras.layers.Dense(self.layer_size[0], activation=self.activation, kernel_initializer=self.initializer)
-            ]
-            # Layer2:
-            if self.config["layer2"] != 0:
-                model_structure += [
-                    tf.keras.layers.Dense(self.layer_size[1], activation=self.activation,
-                                          kernel_initializer=self.initializer)
-                ]
-            # Layer3:
-            if self.config["layer3"] != 0:
-                model_structure += [
-                    tf.keras.layers.Dense(self.layer_size[2], activation=self.activation,
-                                          kernel_initializer=self.initializer)
-                ]
-            # Dropout 1:
-            if self.config["dropout1"] != 0.0:
-                model_structure += [tf.keras.layers.Dropout(self.config["dropout1"])]
-
-            # Layer 4:
-            if self.config["layer4"] != 0:
-                model_structure += [
-                    tf.keras.layers.Dense(self.layer_size[3], activation=self.activation,
-                                          kernel_initializer=self.initializer)
-                ]
-
-            # Dropout 2:
-            if self.config["dropout2"] != 0.0:
-                model_structure += [tf.keras.layers.Dropout(self.config["dropout2"])]
-
-            model_structure += [tf.keras.layers.Dense(self.num_actions, activation="softmax")]
-            model = tf.keras.models.Sequential(model_structure)
-
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.lr), loss=self.lf, metrics=["accuracy"])
-        logging.info(model.summary)
-        return model
-
-    def _extract_config(self, config) -> Tuple[List, tf.keras.initializers.Initializer, tf.keras.layers.Layer]:
-        """
-        Method to extract the hyperparameters of the config
-
-        Args:
-            config:
-
-        Returns: layers, initializer and activation methode.
-
-        """
-        # Default values:
-        layer_size = [1000, 1000, 1000, 1000]
-        initializer = tf.keras.initializers.Orthogonal()
-        activation = tf.keras.layers.ReLU()
-
-        if not any([k in config.keys() for k in ["activation", "initializer", "layer1",
-                                                 "layer2", "layer3", "layer4"]]):
-            import warnings
-            warnings.warn("The custom dictionary had not the correct keys. Revert to default model.")
-            return layer_size, initializer, activation
-
-        # Activation options:
-        activation_option = {"leaky_relu": tf.keras.layers.LeakyReLU(),
-                             "relu": tf.keras.layers.ReLU(),
-                             "elu": tf.keras.layers.ELU(),
-                             }
-        # Initializer Options
-        initializer_option = {"O": tf.keras.initializers.Orthogonal(),
-                              "RN": tf.keras.initializers.RandomNormal(),
-                              "RU": tf.keras.initializers.RandomUniform(),
-                              "Z": tf.keras.initializers.Zeros()}
-
-        activation = activation_option[config.get("activation", "relu")]
-        initializer = initializer_option[config.get("initializer", "O")]
-
-        if all([l in config.keys() for l in ["layer1", "layer2", "layer3", "layer4"]]):
-            layer_size = [int(np.round(config[l])) for l in ["layer1", "layer2", "layer3", "layer4"]]
-
-        return layer_size, initializer, activation
-
-    def train(
-            self,
-            x_train: np.ndarray,
-            y_train: np.ndarray,
-            x_validate: np.ndarray,
-            y_validate: np.ndarray,
-            log_dir: Optional[Union[str, Path]] = None,
-            ckpt_dir: Optional[Union[str, Path]] = None,
-            patience: Optional[int] = None,
-            epochs: Optional = None,
-    ) -> tf.keras.callbacks.History:
-        """Train the junior model for given number of epochs.
-
-        This method builds callbacks for the training and then executes the keras .fit() method
-        to train the Junior model on the x_train and y_train data. Validation is recorded as well.
-
-        Args:
-            log_dir: Directory for tensorboard callback.
-            ckpt_dir: Directory for checkpoint callback.
-            x_train: Training data containing the grid observations.
-            y_train: Training actions of the tutor.
-            x_validate: Validation data containing the grid observations.
-            y_validate: Validation actions of the tutor.
-            epochs: Number of epochs for the training.
-            patience: Optional early stopping criterion.
-
-        Returns:
-            Returns training history.
-
-        """
-        callbacks = self.callback
-
-        logging.warning(f"{tf.__version__}")
-        logging.warning(f"{tf.keras.__version__}")
-        if log_dir is not None:
-            tensorboard_callback = TensorBoard(log_dir=log_dir, write_graph=False)
-            callbacks += [tensorboard_callback]
-        if isinstance(ckpt_dir, (Path, str)):
-            if isinstance(ckpt_dir, str):
-                ckpt_path = ckpt_dir + "/" + "ckpt_{epoch}"
-            else:
-                ckpt_path = ckpt_dir / "ckpt_{epoch}"
-
-            cp_callback = ModelCheckpoint(filepath=ckpt_path, save_weights_only=False, save_freq=10, verbose=1)
-            callbacks += [cp_callback]
-
-        if patience is not None:
-            early_stopping = EarlyStopping(
-                monitor="val_loss",
-                patience=patience,
-                verbose=1,
-                mode="auto",
-                restore_best_weights=True,
-            )
-            callbacks += [early_stopping]
-
-        history = self.model.fit(
-            x=x_train,
-            y=y_train,
-            epochs=epochs or self.epochs,
-            validation_data=(x_validate, y_validate),
-            batch_size=self.batch_size,
-            callbacks=callbacks,
-        )
         return history
 
-    def test(self, x: np.ndarray, y: np.ndarray, save_path: Optional[Path] = None) -> dict:
-        """Test the Junior model with input dataset x and targets/actions y.
-
-        The method predicts based on the input x and then computes a ranking, regarding the
-        accuracy on the actions.
-
-        The ranking collects, if the action of the tutor was within the 1-20 actions.
+    def test(self,
+             dataset_path: Path,
+             checkpoint_path: Optional[Path] = None,
+             dataset_name: str = "junior_dataset"
+             ) -> dict:
+        """Test the given checkpoint against the test data set.
 
         Args:
-            x: Input with Tutor observation for the prediction.
-            y: Action of the tutor to validate with the prediction.
-            save_path: Optional path where the weights of the model are saved.
-                If needed, the weights are loaded by model.load_weights(save_path).
+            checkpoint_path: The checkpoint file to use for the conversion/input.
+            dataset_path: Path to the dataset used to train the checkpoint.
+            dataset_name: The name of the dataset in {dataset_name}_test.npz.
 
         Returns:
-            The dictionary that contains the top values.
+            Dictionary with accuracy values achieved on the testing dataset.
 
         """
-        if isinstance(save_path, Path):
-            self.model = tf.keras.models.load_model(save_path)
-            logging.info(f"Imported model from{save_path}")
+        logging.info(f"A total of {len(self.actions)} are assumed, based on the action_space_file input.")
 
-        a_pred = self.model.predict(x, verbose=1)
-        top_n = []
-        for i in range(a_pred.shape[0]):
-            top_n.append(a_pred[i, :].argsort()[-20:])
+        if self.run_with_tf:
+            _, _, _, _, s_test, a_test = load_dataset(dataset_path, dataset_name)
 
-        # Added accuracy to record the prediction performance
-        accuracy = {}
+            if self.scaler:
+                s_test = self.scaler.transform(s_test)
 
-        for n in range(1, 21):
-            correct = 0
-            for i in range(a_pred.shape[0]):
-                if y[i, 0] in top_n[i][-n:]:
-                    correct += 1
+            accuracy = self.junior_model.test(x=s_test, y=a_test, save_path=checkpoint_path)
 
-            acc = correct / a_pred.shape[0] * 100
-            logging.info(f"accuracy of top-{n} is {acc}")
+        else:
 
-            accuracy["accuracy of top-%d" % n] = correct / a_pred.shape[0] * 100
+            if self.scaler:
+                accuracy = self.junior_model.test(dataset_path=dataset_path, dataset_name=dataset_name, scaler=self.scaler, checkpoint_path=checkpoint_path)
+            else:
+                accuracy = self.junior_model.test(dataset_path=dataset_path, dataset_name=dataset_name, checkpoint_path=checkpoint_path)
         return accuracy
 
 
@@ -396,126 +215,3 @@ def load_dataset(
         test_data["s_test"],
         test_data["a_test"],
     )
-
-
-def train(
-        run_name: str,
-        dataset_path: Path,
-        target_model_path: Path,
-        action_space_file: Optional[Union[Path, List[Path]]] = None,
-        dataset_name: str = "junior_dataset",
-        epochs: int = 1000,
-        seed: Optional[int] = None,
-) -> tf.keras.callbacks.History:
-    """Loads the dataset and then trains the JuniorModel with the given dataset and hyperparameters.
-
-    Args:
-        run_name: The name of the training run.
-        dataset_path: Path to the dataset files.
-        target_model_path: Path, where to save the model.
-        action_space_file: Optional action space file of the tutor.
-        dataset_name: The name of the dataset in {dataset_name}_train.npz.
-        epochs: The number of epochs to train.
-        seed: Random seed to set for the training.
-
-    Returns:
-        Training history in Keras format.
-
-    """
-    if not target_model_path.is_dir():
-        logging.warning(f"{target_model_path} does not exists yet. Create directory")
-        target_model_path.mkdir(parents=True, exist_ok=True)
-
-    ckpt_dir = target_model_path / f"ckpt-{run_name}"
-
-    s_train, a_train, s_validate, a_validate, _, a_test = load_dataset(dataset_path, dataset_name)
-
-    # Get maximum number of actions:
-    if action_space_file is None:
-        max_action_value = np.max([np.max(a_train), np.max(a_validate), np.max(a_test)]) + 1
-    else:
-        if isinstance(action_space_file, Path):
-            assert action_space_file.is_file()
-            actions = np.load(str(Path(action_space_file)))
-            max_action_value = len(actions)
-
-        elif isinstance(action_space_file, list):
-            for act_path in action_space_file:
-                assert act_path.is_file()
-            actions = [np.load(str(act_path)) for act_path in action_space_file]
-            max_action_value = 0
-            for act in actions:
-                max_action_value += len(act)
-
-    logging.info(f"A total of {max_action_value} actions are assumed, based on the action_space_file input.")
-
-    steps = (len(s_train) * epochs) / 256
-    lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
-        5e-4, steps, end_learning_rate=1e-4, power=1.0, cycle=False, name=None
-    )
-
-    junior = Junior(
-        action_space_file=action_space_file,
-        seed=seed,
-    )
-    history = junior.train(
-        x_train=s_train,
-        y_train=a_train,
-        x_validate=s_validate,
-        y_validate=a_validate,
-        log_dir=None,
-        ckpt_dir=ckpt_dir,
-        patience=None,
-        epochs=epochs,
-    )
-    # Save model
-    junior.model.save(target_model_path)
-
-    return history
-
-
-def validate(
-        checkpoint_path: Path,
-        dataset_path: Path,
-        dataset_name: str = "junior_dataset",
-        action_space_file: Optional[Union[Path, List[Path]]] = None,
-) -> dict:
-    """Test the given checkpoint against the test data set.
-
-    Args:
-        checkpoint_path: The checkpoint file to use for the conversion/input.
-        dataset_path: Path to the dataset used to train the checkpoint.
-        dataset_name: The name of the dataset in {dataset_name}_test.npz.
-        action_space_file: Optional action space file of the Tutor. This is relevant if multiple
-            action sets were used in the Tutor optimization. If no action_space_file is provided, it is assumed
-            that only one action file exists. Then the maximum action is taken from the
-            training/val/test data.
-
-    Returns:
-        Dictionary with accuracy values achieved on the testing dataset.
-
-    """
-
-    assert checkpoint_path.is_dir()
-
-    s_train, a_train, s_validate, a_validate, s_test, a_test = load_dataset(dataset_path, dataset_name)
-
-    if action_space_file is None:
-        max_action_value = np.max([np.max(a_train), np.max(a_validate), np.max(a_test)]) + 1
-    else:
-        if isinstance(action_space_file, Path):
-            assert action_space_file.is_file()
-            actions = np.load(str(Path(action_space_file)))
-            max_action_value = len(actions)
-
-        elif isinstance(action_space_file, list):
-            for act_path in action_space_file:
-                assert act_path.is_file()
-            actions = np.concatenate([np.load(str(act_path)) for act_path in action_space_file], axis=0)
-            max_action_value = len(actions)
-
-    logging.info(f"A total of {max_action_value} are assumed, based on the action_space_file input.")
-
-    junior = Junior(action_space_file=action_space_file)
-    accuracy = junior.test(x=s_test, y=a_test, save_path=checkpoint_path)
-    return accuracy

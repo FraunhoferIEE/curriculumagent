@@ -18,7 +18,7 @@ import ray
 from grid2op.Agent import BaseAgent
 from lightsim2grid import LightSimBackend
 
-from curriculumagent.junior.junior_student import train as train_junior
+from curriculumagent.junior.junior_student import Junior
 from curriculumagent.senior.senior_student import Senior
 from curriculumagent.submission.my_agent import MyAgent
 from curriculumagent.teacher.collect_teacher_experience import make_unitary_actionspace
@@ -338,14 +338,18 @@ class CurriculumAgent(BaseAgent):
         )
 
         if not (junior_results_path / "saved_model.pb").exists():
-            train_junior(
+            junior = Junior(run_with_tf = True,
+                            action_space_file = actions_path,
+                            config = {},
+                            seed = seed,
+                            run_nni = False
+    )
+            junior.train(
                 run_name="junior",
                 dataset_path=junior_data_path,
                 target_model_path=junior_results_path,
-                action_space_file=actions_path,
                 dataset_name="test",
-                epochs=10 + iterations,
-                seed=seed,
+                epochs=10 + iterations
             )
         else:
             logging.info(f"Skipping Junior because {junior_results_path / 'saved_model.pb'} already exists")

@@ -15,9 +15,9 @@ from ray.rllib.utils import check_env
 from sklearn.base import BaseEstimator
 
 from curriculumagent.senior.rllib_execution.senior_env_rllib import SeniorEnvRllib
-from curriculumagent.senior.rllib_execution.senior_model_rllib import Grid2OpCustomModel
+from curriculumagent.senior.rllib_execution.senior_model_rllib import Grid2OpCustomModelTF, Grid2OpCustomModelTorch
 from curriculumagent.submission.my_agent import MyAgent
-
+import torch
 
 class Senior:
     """
@@ -34,11 +34,13 @@ class Senior:
                  action_space_path: Union[Path, List[Path]],
                  model_path: Union[Path, str],
                  ckpt_save_path: Optional[Union[Path, str]] = None,
+                 run_with_tf: bool = True,
                  scaler: Optional[Union[ObjectRef, BaseEstimator, str]] = None,
                  custom_junior_config: Optional[dict] = None,
                  num_workers: Optional[int] = None,
                  subset: Optional[bool] = False,
-                 env_kwargs: Optional[dict] = {}):
+                 env_kwargs: Optional[dict] = {},
+                 rho_threshold: Optional[float] = 0.95):
         """
         The Senior requires multiple inputs for the initialization.
 
@@ -65,8 +67,10 @@ class Senior:
             selected.
             env_kwargs: Optional parameters for the Grid2Op environment that should be used when making the environment.
         """
+        # ToDo optimize docstrings
         # Set default values:
 
+        self.run_with_tf = run_with_tf
         self.ckpt_save_path = ckpt_save_path
         assert ray.is_initialized(), "Ray seems not to be initialized. Please use ray.init() prior to running" \
                                      "the Senior."
@@ -81,10 +85,13 @@ class Senior:
                              f"the scaler cause the following exception:{e}"
                              f"It will be set to None")
 
+        if not rho_threshold:
+            rho_threshold = 0.95
+
         self.env_config = {
             "action_space_path": action_space_path,
             "env_path": env_path,
-            "action_threshold": 0.95,
+            "action_threshold": rho_threshold,
             'subset': subset,
             'scaler': scaler,
             'topo': True,
@@ -92,17 +99,21 @@ class Senior:
 
         self.model_config = None
 
+        if self.run_with_tf:
+            ModelCatalog.register_custom_model('Senior', Grid2OpCustomModelTF)
+        else:
+            ModelCatalog.register_custom_model('Senior', Grid2OpCustomModelTorch)
+
         if isinstance(custom_junior_config, (dict, str)):
             if isinstance(custom_junior_config, str):
                 with open(custom_junior_config) as json_file:
                     custom_junior_config = json.load(json_file)
 
-            ModelCatalog.register_custom_model('Senior', Grid2OpCustomModel)
             self.model_config = {"model_path": model_path,
                                  "custom_config": custom_junior_config}
             self.__advanced_model = True
         else:
-            ModelCatalog.register_custom_model('Senior', Grid2OpCustomModel)
+
             self.model_config = {"model_path": model_path}
             self.__advanced_model = False
 
@@ -115,13 +126,23 @@ class Senior:
         if not num_workers:
             num_workers = num_cpu // 2
 
-        self.ppo_config = (
-            PPOConfig().environment(env=SeniorEnvRllib, env_config=self.env_config)
-            .rollouts(num_rollout_workers=num_workers)
-            .framework("tf2")
-            .training(model={"custom_model": "Senior",
-                             "custom_model_config": self.model_config})
-            .evaluation(evaluation_num_workers=1))
+        if self.run_with_tf:
+            self.ppo_config = (
+                PPOConfig().environment(env=SeniorEnvRllib, env_config=self.env_config)
+                .rollouts(num_rollout_workers=num_workers)
+                .framework("tf2")
+                .training(model={"custom_model": "Senior",
+                                 "custom_model_config": self.model_config})
+                .evaluation(evaluation_num_workers=1))
+        else:
+            self.ppo_config = (
+                PPOConfig().environment(env=SeniorEnvRllib, env_config=self.env_config)
+                .rollouts(num_rollout_workers=num_workers)
+                .framework("torch")
+                .training(model={"custom_model": "Senior",
+                                 "custom_model_config": self.model_config})
+                .evaluation(evaluation_num_workers=1))
+
 
         self.ppo = self.ppo_config.build()
 
@@ -162,6 +183,7 @@ class Senior:
         self.ppo.restore(path)
         logging.info(f"Restored path: {path} ")
 
+
     def save_to_model(self, path: Optional[Union[str, Path]] = "."):
         """
         Saving the model for the final Agent. This model is saved as a TensorFlow model and
@@ -187,15 +209,29 @@ class Senior:
         self.save_to_model(path)
 
         # Load the my_agent:
-        agent = MyAgent(
-            action_space=self.rllib_env.single_env.action_space,
-            model_path=path,
-            action_space_path=self.env_config["action_space_path"],
-            scaler=self.env_config["scaler"],
-            best_action_threshold=self.env_config["action_threshold"],
-            topo=self.env_config["topo"],
-            subset=self.env_config["subset"]
-        )
+        if self.run_with_tf:
+            agent = MyAgent(
+                action_space=self.rllib_env.single_env.action_space,
+                model_path=path,
+                action_space_path=self.env_config["action_space_path"],
+                scaler=self.env_config["scaler"],
+                best_action_threshold=self.env_config["action_threshold"],
+                topo=self.env_config["topo"],
+                subset=self.env_config["subset"],
+                run_with_tf=True
+            )
+        else:
+            agent = MyAgent(
+                action_space=self.rllib_env.single_env.action_space,
+                model_path=path,
+                action_space_path=self.env_config["action_space_path"],
+                scaler=self.env_config["scaler"],
+                best_action_threshold=self.env_config["action_threshold"],
+                topo=self.env_config["topo"],
+                subset=self.env_config["subset"],
+                run_with_tf=False
+            )
+
         return agent
 
     def __test_env_and_model_config(self) -> None:
@@ -224,32 +260,66 @@ class Senior:
 
         # Now the model
         logging.info("Analyzing the Model configuration.")
-        # First TF Model
-        logging.info("First loading the TensorFlow model")
-        model = tf.keras.models.load_model(self.model_config["model_path"])
-        model.compile()
-        logging.info("TF Model Import works")
+
+        if self.run_with_tf:
+            # First TF Model
+            logging.info("First loading the TensorFlow model")
+            model = tf.keras.models.load_model(self.model_config["model_path"])
+            model.compile()
+            logging.info("TF Model Import works")
+        else:
+            # First Torch Model
+            logging.info("First loading the PyTorch model")
+            model = Grid2OpCustomModelTorch(obs_space=self.rllib_env.observation_space,
+                                           action_space=self.rllib_env.action_space,
+                                           num_outputs=self.rllib_env.action_space.n,
+                                           model_config={},
+                                           model_path=self.model_config["model_path"],
+                                           custom_config=self.model_config.get("custom_config", None),
+                                           name="Junior")
+            model._params_copy(self.model_config["model_path"])
+            logging.info("PyTorch Import works")
 
         # Now the RLlib Model:
-        if self.__advanced_model:
-            model = Grid2OpCustomModel(obs_space=self.rllib_env.observation_space,
-                                       action_space=self.rllib_env.action_space,
-                                       num_outputs=self.rllib_env.action_space.n,
-                                       model_config={},
-                                       model_path=self.model_config["model_path"],
-                                       custom_config=self.model_config["custom_config"],
-                                       name="Junior")
+        if self.run_with_tf:
+            if self.__advanced_model:
+                model = Grid2OpCustomModelTF(obs_space=self.rllib_env.observation_space,
+                                           action_space=self.rllib_env.action_space,
+                                           num_outputs=self.rllib_env.action_space.n,
+                                           model_config={},
+                                           model_path=self.model_config["model_path"],
+                                           custom_config=self.model_config["custom_config"],
+                                           name="Junior")
+            else:
+                model = Grid2OpCustomModelTF(obs_space=self.rllib_env.observation_space,
+                                           action_space=self.rllib_env.action_space,
+                                           num_outputs=self.rllib_env.action_space.n,
+                                           model_config={},
+                                           model_path=self.model_config["model_path"],
+                                           name="Junior")
         else:
-            model = Grid2OpCustomModel(obs_space=self.rllib_env.observation_space,
-                                       action_space=self.rllib_env.action_space,
-                                       num_outputs=self.rllib_env.action_space.n,
-                                       model_config={},
-                                       model_path=self.model_config["model_path"],
-                                       name="Junior")
+            if self.__advanced_model:
+                model = Grid2OpCustomModelTorch(obs_space=self.rllib_env.observation_space,
+                                           action_space=self.rllib_env.action_space,
+                                           num_outputs=self.rllib_env.action_space.n,
+                                           model_config={},
+                                           model_path=self.model_config["model_path"],
+                                           custom_config=self.model_config["custom_config"],
+                                           name="Junior")
+            else:
+                model = Grid2OpCustomModelTorch(obs_space=self.rllib_env.observation_space,
+                                           action_space=self.rllib_env.action_space,
+                                           num_outputs=self.rllib_env.action_space.n,
+                                           model_config={},
+                                           model_path=self.model_config["model_path"],
+                                           name="Junior")
 
         logging.info("Init of model worked.")
         # Now Testing
-        obs = {"obs": obs.reshape(1, -1)}
+        if self.run_with_tf:
+            obs = {"obs": obs.reshape(1, -1)}
+        else:
+            obs = {"obs": torch.from_numpy(obs.reshape(1, -1))}
         assert model.forward(input_dict=obs, state=1, seq_lens=None), "Error, the model was not able to pass values!"
         logging.info("Model seems to be working")
         logging.info("All testing completed. ")
