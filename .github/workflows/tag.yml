@@ -136,13 +136,6 @@ jobs:
       - name: Test with pytest number 5
         run: |
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_tutor -s
-      - name: Archive Test results
-        uses: actions/upload-artifact@v3
-        with:
-          name: Test Coverage
-          path: cov_html/
-          retention-days: 7
-        if: ${{ always() }}
   testteacher:
     needs: pipeline
     runs-on: ubuntu-latest
@@ -164,13 +157,6 @@ jobs:
       - name: Test with pytest number 6
         run: |
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s -m "not slow"
-      - name: Archive Test results
-        uses: actions/upload-artifact@v3
-        with:
-          name: Test Coverage
-          path: cov_html/
-          retention-days: 7
-        if: ${{ always() }}
   build:
     needs: [testteacher,testtutor,testjunior,testsenior,testcommon,testbaseline]
     runs-on: ubuntu-latest
