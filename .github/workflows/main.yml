@@ -153,3 +153,22 @@ jobs:
       - name: Test with pytest number 6
         run: |
           pytest --cov-report html:cov_html --cov=curriculumagent tests/test_teacher -s -m "not slow"
+
+  build:
+    needs: [ testteacher,testtutor,testjunior,testsenior,testcommon,testbaseline ]
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT_STAGE }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install for safety again all requirements
+        run: |
+          pip install -r requirements-dev.txt
+          pip install setuptools==69.5.1
+          pip install build
+      - name: Build Package
+        run: python -m build
