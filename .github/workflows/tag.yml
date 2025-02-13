@@ -171,6 +171,7 @@ jobs:
       - name: Install for safety again all requirements
         run: |
           pip install -r requirements-dev.txt
+          pip install setuptools==69.5.1
           pip install build
       - name: Build Package
         run: python -m build
