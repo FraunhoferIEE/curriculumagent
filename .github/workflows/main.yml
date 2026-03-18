@@ -30,6 +30,14 @@ jobs:
       - name: Run Pylint for checking of Syntax
         run: |
            pylint curriculumagent --rcfile=pylintrc --fail-under=8
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       # Run Pytest
   testbaseline:
     needs: pipeline
