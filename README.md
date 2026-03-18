@@ -39,7 +39,6 @@ Please take a look at our [sphinx documentation](https://curriculumagent.readthe
 We also provide several jupyter notebooks in `./jupyter_notebooks` to get you started quickly.
 
 
-
 License
 -------
 

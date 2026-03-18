@@ -187,7 +187,8 @@ class TestSenior:
         ray.init(ignore_reinit_error=True)
         senior = Senior(env_path=env_path,
                         action_space_path=actions_path,
-                        model_path=path_to_junior, subset=False)
+                        model_path=path_to_junior, subset=False,
+                        ckpt_save_path = test_temp_save )
         assert senior.ppo.iteration == 0
         out = senior.train(1)
         assert senior.ppo.iteration == 1

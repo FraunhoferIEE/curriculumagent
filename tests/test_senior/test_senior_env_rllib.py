@@ -169,7 +169,7 @@ class TestEnvRllib:
         env = SeniorEnvRllib(config, testing=True)
 
         assert isinstance(env.observation_space, Box)
-        assert env.observation_space.shape == (1429,)
+        assert env.observation_space.shape == (1510,)
 
     def test_scaler(self, test_paths_env, test_submission_action_space):
         """
@@ -191,6 +191,7 @@ class TestEnvRllib:
         max_obs = max(env.obs_rl)
 
         scaler_path = Path(__file__).parent.parent / "data" / "scaler_junior.pkl"
+        print(scaler_path)
         with open(scaler_path, "rb") as fp:  # Pickling
             scaler = pickle.load(fp)
 
@@ -199,7 +200,7 @@ class TestEnvRllib:
         env.reset(options={"id": 1})
 
         assert isinstance(env.scaler, MinMaxScaler)
-        assert env.obs_rl.shape == (1429,)
+        assert env.obs_rl.shape == (1510,)
         max_obs_scaled = max(env.obs_rl)
         assert max_obs > max_obs_scaled
 
@@ -209,7 +210,7 @@ class TestEnvRllib:
         env.reset(options={"id": 1})
 
         assert isinstance(env.scaler, MinMaxScaler)
-        assert env.obs_rl.shape == (1429,)
+        assert env.obs_rl.shape == (1510,)
         max_obs_scaled = max(env.obs_rl)
         assert max_obs > max_obs_scaled
 
@@ -230,7 +231,7 @@ class TestEnvRllib:
         assert env.obs_grid2op.rho.max() >= 0.9
 
         # Checking whether the to_vect() was executed:
-        assert env.obs_rl.shape == (1429,)
+        assert env.obs_rl.shape == (1510,)
         assert isinstance(env.obs_rl, np.ndarray)
 
     def test_step_action_format(self, test_paths_env):
@@ -343,11 +344,11 @@ class TestEnvRllib:
 
         # Original
         env = SeniorEnvRllib(config, testing=True)
-        assert env.observation_space.shape == (1429,)
+        assert env.observation_space.shape == (1510,)
         obs, _, _, _, _ = env.step(1)
-        assert obs.shape == (1429,)
+        assert obs.shape == (1510,)
         obs = env.run_next_action()
-        assert obs.shape == (1429,)
+        assert obs.shape == (1510,)
         # Filtered
         config["subset"] = True
         env = SeniorEnvRllib(config, testing=True)

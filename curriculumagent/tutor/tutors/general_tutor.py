@@ -18,7 +18,7 @@ from curriculumagent.common.utilities import simulate_action, find_best_line_to_
 
 
 class GeneralTutor(BaseAgent):
-    """The class of the tutor agent which takes a reduced action space acts greedily using it.
+    """The class of the tutor agent which takes a reduced action space acts quasi-greedily using it.
     """
 
     def __init__(
@@ -35,7 +35,7 @@ class GeneralTutor(BaseAgent):
         The required actions are either a Path variable leading to a numpy array or a list with
         multiple entries (paths). If multiple entries are supplied, the tutor executes the list sequentially.
         That means, if the threshold of the best action is met in the first set of actions from the
-        list, the greedy search stops.
+        list, the greedy search stops. For pure greedy behavior, set best_action_threshold to 0.0.
 
         Args:
             action_space: action space object from Gird2Op environment

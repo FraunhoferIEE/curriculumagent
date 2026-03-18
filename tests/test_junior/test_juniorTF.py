@@ -21,13 +21,13 @@ class TestJuniorWithTF:
         """
         data_path = Path(__file__).parent.parent / "data" / "junior_experience"
         s_tr, a_tr, s_v, a_v, s_te, a_te = load_dataset(dataset_path=data_path, dataset_name="test")
-        assert s_tr.shape == (3, 1429)
-        assert a_tr.shape == (3, 1)
-        assert s_v.shape == (4, 1429)
-        assert a_v.shape == (4, 1)
-        assert s_te.shape == (4, 1429)
-        assert a_te.shape == (4, 1)
-        assert np.array_equal(a_te.squeeze(), [6, 3, 0, 5])
+        assert s_tr.shape == (11, 1510)
+        assert a_tr.shape == (11, 1)
+        assert s_v.shape == (2, 1510)
+        assert a_v.shape == (2, 1)
+        assert s_te.shape == (1, 1510)
+        assert a_te.shape == (1, 1)
+        assert np.array_equal(a_te.squeeze(), 3)
 
     def test_init(self, test_submission_action_space):
         """

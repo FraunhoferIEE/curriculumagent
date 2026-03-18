@@ -35,7 +35,7 @@ IMPORT_NAME = 'curriculumagent'  # name used for imports
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None,
+intersphinx_mapping = {"python": ('https://docs.python.org/', None),
                         'grid2op': ('https://grid2op.readthedocs.io/en/latest/', None),
                         'numpy': ('https://numpy.org/doc/stable/', None),
                         'pandas': ('https://pandas.pydata.org/docs/', None),
@@ -103,7 +103,7 @@ release = about.__version__  # (we don't use any such tags)
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'

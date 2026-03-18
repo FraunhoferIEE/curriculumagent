@@ -281,7 +281,7 @@ def obs_space():
     """
     Default obs space
     """
-    return Box(low=-1.0, high=1.0, shape=(1429,), dtype=np.float32)
+    return Box(low=-1.0, high=1.0, shape=(1510,), dtype=np.float32)
 
 
 @pytest.fixture
