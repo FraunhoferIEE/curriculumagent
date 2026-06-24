@@ -183,11 +183,12 @@ class TestAdvancedCustomModelTorch:
         model_path = test_submission_model_torch
         cc = {"model_path": model_path,
               "custom_config": {}}
-
-        model = Grid2OpCustomModelTorch(obs_space=obs_space, action_space=action_space,
+        # We need to overwrite the obs_space, because the model expects a lecacy obs_space format
+        dummy_obs_space= Box(low=-1.0, high=1.0, shape=(1429,), dtype=np.float32)
+        model = Grid2OpCustomModelTorch(obs_space=dummy_obs_space, action_space=action_space,
                                         num_outputs=action_space.n, model_config={},
                                         name="test_model", **cc)
 
         weights = model.layer1.weight.data.numpy()
-        assert weights.shape == (1000, obs_space.shape[0])  # And not 42!
+        assert weights.shape == (1000, dummy_obs_space.shape[0])  # And not 42!
         assert weights[0][0] == pytest.approx(0.004563817)

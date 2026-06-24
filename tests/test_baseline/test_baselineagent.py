@@ -29,7 +29,6 @@ class TestBaselineAgent:
 
         myagent = CurriculumAgent(action_space=env.action_space, observation_space=env.observation_space,
                                   name="El Testo")
-
         # Test the default values
         assert isinstance(myagent, BaseAgent)
         assert isinstance(myagent.observation_space, grid2op.Observation.ObservationSpace)
@@ -51,7 +50,7 @@ class TestBaselineAgent:
                                   name="El Testo Secundo")
         env.seed(42)
         obs = env.reset()
-        assert obs.to_vect().shape == (467,)
+        assert obs.to_vect().shape == (493,)
         done = False
         while not done:
             with pytest.warns():

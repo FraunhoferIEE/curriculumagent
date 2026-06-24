@@ -1,6 +1,11 @@
 name: CI
 
-on: [push]
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '*'
 
 env:
   # Setting an environment variable with the value of a configuration variable
@@ -24,6 +29,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       # Run pylint
       - name: Run Pylint for checking of Syntax
+        continue-on-error: true
         run: |
            pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest

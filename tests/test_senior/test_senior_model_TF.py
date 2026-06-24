@@ -139,7 +139,7 @@ class TestAdvancedCustomModelTF:
             model.value_function()
 
 
-        obs = tf.constant(np.ones((1, 1429)), dtype=tf.float32)
+        obs = tf.constant(np.ones((1, 1510)), dtype=tf.float32)
         model_out, state = model.forward({"obs": obs}, "Don't mind me, just passing through", None)
         assert model_out.shape == (1, 806)
         assert state is "Don't mind me, just passing through"
@@ -160,7 +160,7 @@ class TestAdvancedCustomModelTF:
         # Test the creation of the model
         weights = model.base_model.get_weights()
         assert weights[0][0].shape == (1000,)
-        assert weights[0][0][0] == pytest.approx(0.0004194975)
+        assert weights[0][0][0] == pytest.approx(0.0004096031)
 
         # Now we try to load a Senior model
         # Note that we do not need the custom_config, because it is overwritten !

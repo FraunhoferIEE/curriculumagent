@@ -241,6 +241,18 @@ class JuniorTorch:
 
         return accuracy
 
+    def save(self, save_path):
+        """
+                Saves the current state of the Junior model to a specified path.
+
+                Args:
+                    save_path (Path): Path where to save model.
+                Returns:
+                    None
+        """
+        model_state_dict = self.lightning_model.model.state_dict()
+        torch.save(model_state_dict, save_path)
+
 
 class Junior_PtL(L.LightningModule):
     """
@@ -319,7 +331,7 @@ class Junior_PtL(L.LightningModule):
         Returns:
             torch.optim.Optimizer: The optimizer for the model parameters.
         """
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
     def validation_step(self, batch, batch_idx):
@@ -381,13 +393,13 @@ class Junior_PtL(L.LightningModule):
 
             if self.config["layer2"] != 0:
                 layers += [
-                    ("layer2", nn.Linear(in_features=self.layer_size[1], out_features=self.layer_size[2])),
+                    ("layer2", nn.Linear(in_features=self.layer_size[0], out_features=self.layer_size[1])),
                     ("activation2", self.activation)
                 ]
 
             if self.config["layer3"] != 0:
                 layers += [
-                    ("layer3", nn.Linear(in_features=self.layer_size[2], out_features=self.layer_size[3])),
+                    ("layer3", nn.Linear(in_features=self.layer_size[1], out_features=self.layer_size[2])),
                     ("activation3", self.activation)
                 ]
 
@@ -396,7 +408,7 @@ class Junior_PtL(L.LightningModule):
 
             if self.config["layer4"] != 0:
                 layers += [
-                    ("layer4", nn.Linear(in_features=self.layer_size[3], out_features=self.num_actions)),
+                    ("layer4", nn.Linear(in_features=self.layer_size[2], out_features=self.layer_size[3])),
                     ("activation4", self.activation)
                 ]
 

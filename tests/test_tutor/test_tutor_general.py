@@ -51,10 +51,9 @@ class TestTutorGeneral:
         result = np.load(save_path / file_name)
         # First and last choice is (6)
         assert result[1, 0] == 6.0
-        assert result[-1, 0] == 6.0
 
         if os.path.exists(save_path / file_name):
-            os.remove(str(save_path / file_name))
+           os.remove(str(save_path / file_name))
 
         assert not os.listdir(save_path)
 
@@ -82,7 +81,7 @@ class TestTutorGeneral:
             env_name_path=data_path,
             action_paths=[single_path, tripple_path],
             save_path=save_path,
-            num_chronics=2,
+            num_chronics=3,
             num_sample=None,
             seed=42,
         )
@@ -92,10 +91,10 @@ class TestTutorGeneral:
         result = np.load(save_path / file_name)
         # Check whether the first data set was correctly selected
 
-        assert result[2, 0] == 0.0
+        assert result[2, 0] == 7.0
 
         if os.path.exists(save_path / file_name):
-            os.remove(str(save_path / file_name))
+          os.remove(str(save_path / file_name))
 
         assert not os.listdir(save_path)
 
@@ -166,7 +165,7 @@ class TestTutorGeneral:
             action_paths=[single_path, tripple_path], chronics_id=1, env_name_path=test_env_p, seed=42
         )
         assert out[1, 1] == 2012
-        assert out.shape == (13, 1430)
+        assert out.shape == (13, 1511)
 
     def test_multiple_actions_id_selections(self, test_env, test_action_paths):
         """

@@ -40,12 +40,12 @@ class TestCreateJuniorData:
         # Load Train_data:
         train_data = np.load(save_path / "test_train.npz")
         print(train_data["a_train"])
-        assert np.array_equal(train_data["a_train"], np.array([[6], [279], [0]]))
+        assert np.array_equal(train_data["a_train"], np.array([[ 6],[12],[0],[18],[2],[6],[0],[0],[19],[1],[5]]))
 
         test_data = np.load(save_path / "test_test.npz")
         val_data = np.load(save_path / "test_val.npz")
-        assert len(train_data["s_train"]) + len(val_data["s_validate"]) + len(test_data["s_test"]) == 7
-        assert test_data["a_test"][-1] == [85]
+        assert len(train_data["s_train"]) + len(val_data["s_validate"]) + len(test_data["s_test"]) == 14
+        assert test_data["a_test"][-1] == [3]
 
         del train_data, test_data, val_data
         # Delete full temporary_save file and then create it again

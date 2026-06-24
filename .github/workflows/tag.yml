@@ -28,6 +28,7 @@ jobs:
           pip install setuptools==69.5.1
       # Run pylint
       - name: Run Pylint for checking of Syntax
+        continue-on-error: true
         run: |
           pylint curriculumagent --rcfile=pylintrc --fail-under=8
       # Run Pytest

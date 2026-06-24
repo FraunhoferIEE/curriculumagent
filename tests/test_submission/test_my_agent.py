@@ -119,10 +119,10 @@ class TestAdvancedAgent:
 
 
         # The junior has a different model size here
-        a1 = np.random.random((1429,))
+        a1 = np.random.random((1510,))
         out = agent.model.predict(a1.reshape(1,-1))
         action_prob = tf.nn.softmax(out).numpy().reshape(-1)
-        assert action_prob.argmax()==2
+        assert action_prob.argmax()==0
 
         # Now torch model
         torch.manual_seed(42)
@@ -167,7 +167,7 @@ class TestAdvancedAgent:
         tf.random.set_seed(42)
 
         # The junior has a different model size here
-        a1 = np.random.random((1429,)).astype('f')
+        a1 = np.random.random((1510,)).astype('f')
         out = agent.model.forward(a1.reshape(1, -1))
         action_prob = F.softmax(out,dim=1)
         assert action_prob.argmax().item() == 0

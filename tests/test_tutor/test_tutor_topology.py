@@ -52,7 +52,7 @@ class TestTutorTopology:#
         assert (arr1[0,1:]==obs.topo_vect.reshape(-1)).all()
         assert arr1[0,0]==1091
 
-        assert arr2.shape == (0,634)
+        assert arr2.shape == (0,660)
 
 
     def test_general_tutor(self,sandbox_env,sandbox_actions):

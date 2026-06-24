@@ -24,12 +24,14 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 before_script:
+#  - apt-get update && apt-get install -y libblas-dev liblapack-dev gfortran build-essential #scipy dependencies
   - python -V  # Print out python version for debugging
   - pip install --upgrade pip
   - pip install virtualenv
   - virtualenv venv
   - source venv/bin/activate
-  - pip install -r requirements.txt --no-cache-dir
+#  - pip install numpy scipy
+  - pip install -r requirements.txt
 
 
 pylint:
@@ -119,7 +121,7 @@ deploy_package:
     - rm -rf dist/
     - pip install twine versioneer wheel
     - python setup.py sdist bdist_wheel
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --verbose --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+#    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --verbose --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
   only:
     - tags
 

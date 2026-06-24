@@ -152,7 +152,7 @@ class TestSenior:
 
         ray.shutdown()
 
-    @pytest.mark.ulra_slow
+    @pytest.mark.ultra_slow
     @pytest.mark.slow
     def test_train_runs_without_errors(self, senior_values_tf):
         """
@@ -177,7 +177,7 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-    @pytest.mark.ulra_slow
+    @pytest.mark.ultra_slow
     @pytest.mark.slow
     def test_train_default(self, senior_values_tf):
         """
@@ -187,7 +187,8 @@ class TestSenior:
         ray.init(ignore_reinit_error=True)
         senior = Senior(env_path=env_path,
                         action_space_path=actions_path,
-                        model_path=path_to_junior, subset=False)
+                        model_path=path_to_junior, subset=False,
+                        ckpt_save_path = test_temp_save )
         assert senior.ppo.iteration == 0
         out = senior.train(1)
         assert senior.ppo.iteration == 1
@@ -198,7 +199,8 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-
+    @pytest.mark.ultra_slow
+    @pytest.mark.slow
     def test_restore(self, senior_values_tf, rllib_ckpt):
         """
         Testing whether the Policy can be loaded via restore
@@ -217,7 +219,8 @@ class TestSenior:
         assert senior.ppo.iteration == 1
         ray.shutdown()
 
-
+    @pytest.mark.ultra_slow
+    @pytest.mark.slow
     def test_save_model(self, senior_values_tf, rllib_ckpt):
         """
         Testing whether the previously loaded policy can be saved again
@@ -243,7 +246,8 @@ class TestSenior:
         shutil.rmtree(test_temp_save, ignore_errors=True)
         os.mkdir(test_temp_save)
 
-
+    @pytest.mark.ultra_slow
+    @pytest.mark.slow
     def test_my_agent_return(self, senior_values_tf, rllib_ckpt, test_temp_save):
         """
         Testing, whether the my_agent is returned

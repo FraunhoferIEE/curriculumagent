@@ -16,6 +16,33 @@ from grid2op.Environment import BaseEnv
 from grid2op.Observation import BaseObservation
 from grid2op.dtypes import dt_int
 
+def remove_bus_assignment_of_lines(obs, original_action, lines):
+    """
+    Removes bus assignments for given lines in the power grid.
+
+    Parameters:
+    - obs: Observation object containing grid state information.
+    - original_action: Action object representing the action to be modified.
+    - lines: List of line indices whose bus assignments should be removed.
+
+    Returns:
+    - A modified action object with bus assignments for the specified lines removed.
+    """
+    if len(lines) == 0:
+        return original_action
+
+    # get bus ids of each line
+    or_bus = [obs.line_or_pos_topo_vect[i] for i in lines]
+    ex_bus = [obs.line_ex_pos_topo_vect[i] for i in lines]
+    
+    # remove bus set actions of affected buses
+    bus_assignment = original_action.set_bus.copy()
+    bus_assignment[or_bus + ex_bus] = 0
+
+    logging.debug(f"remove_bus_assignment_of_lines: {lines}")
+    act = deepcopy(original_action)
+    act.update({"set_bus": bus_assignment})
+    return act
 
 def find_best_line_to_reconnect(
         obs: BaseObservation, original_action: BaseAction) -> BaseAction:
@@ -50,13 +77,20 @@ def find_best_line_to_reconnect(
                 line_to_reconnect = line
                 min_rho = o.rho.max()
 
-    reconnect_out = deepcopy(original_action)
+
     if line_to_reconnect != -1:
+        reconnect_out = deepcopy(original_action)
         reconnect_array = np.zeros_like(obs.rho, dtype=int)
         reconnect_array[line_to_reconnect] = 1
         reconnect_out.update({"set_line_status": reconnect_array})
+        dl_copy = disconnected_lines.copy().tolist()
+        dl_copy.remove(line_to_reconnect)
+        final_action = remove_bus_assignment_of_lines(obs, reconnect_out, dl_copy)
 
-    return reconnect_out
+    else:
+        final_action = remove_bus_assignment_of_lines(obs, original_action, disconnected_lines)
+
+    return final_action
 
 
 def is_legal(action: BaseAction, obs: BaseObservation) -> bool:
