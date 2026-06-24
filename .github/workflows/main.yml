@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
+    branches:
+      - '**'
     tags-ignore:
       - '*'
-  pull_request:
 
 env:
   # Setting an environment variable with the value of a configuration variable
