@@ -353,13 +353,21 @@ def senior_values_torch(custom_config_torch, test_paths_env, test_path_data, tes
     return env_path, actions_path, path_to_junior, test_temp_save, c_c, scaler
 
 @pytest.fixture(scope="session")
-def rllib_ckpt(senior_values_tf, tmp_path_factory):
+def rllib_ckpt(tmp_path_factory):  # <-- removed senior_values_tf
     """
     Dynamically trains 1 PPO iteration and returns a fresh checkpoint path.
-    Replaces the old static checkpoint in tests/data/ which broke due to
-    packaging.version.Version pickle incompatibility across packaging versions.
     """
-    env_path, actions_path, path_to_junior, _, _, scaler = senior_values_tf
+    import ray
+    from curriculumagent.senior.senior_student import Senior
+    base = Path(__file__).parent
+    env_path = base / "data" / "training_data_track1"
+    actions_path = [
+        base / "data" / "action_spaces" / "submission" / "actionspace_nminus1.npy",
+        base / "data" / "action_spaces" / "submission" / "actionspace_tuples.npy",
+    ]
+    path_to_junior = base / "data" / "junior_experience" / "model"
+    scaler = base / "data" / "scaler_junior.pkl"
+
     ckpt_dir = tmp_path_factory.mktemp("rllib_ckpt")
 
     ray.init(ignore_reinit_error=True)
